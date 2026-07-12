@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 3 — SAP Fiori Launchpad (FLP) Configuration · Interactive Visualizer</title>
+<style>
+:root {
+  --sap-blue: #0070f2;
+  --sap-dark: #003169;
+  --sap-light: #d1e8ff;
+  --sap-green: #107e3e;
+  --sap-orange: #e9730c;
+  --sap-red: #bb0000;
+  --bg: #f5f7fa;
+  --rail: #ffffff;
+  --line: #e0e6ef;
+  --ink: #1d2d44;
+  --ink-dim: #5a6a7e;
+  --ink-faint: #96a3b4;
+  --panel: #ffffff;
+  --accent: #0070f2;
+  --accent-soft: rgba(0,112,242,0.08);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; font-family: '72', 'SAP72', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--ink); }
+
+/* ── Layout ── */
+.app { display: grid; grid-template-columns: 290px 1fr; height: 100vh; overflow: hidden; }
+
+/* ── Left Rail ── */
+.rail {
+  background: var(--sap-dark);
+  display: flex; flex-direction: column; overflow: hidden;
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+.rail-head {
+  padding: 24px 20px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.rail-head .badge {
+  display: inline-block; background: var(--sap-blue); color: #fff;
+  font-size: 10px; font-weight: 700; letter-spacing: 1px;
+  padding: 3px 8px; border-radius: 3px; margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.rail-head h1 { margin: 0; font-size: 15px; font-weight: 700; color: #fff; line-height: 1.3; }
+.rail-head p { margin: 6px 0 0; font-size: 11.5px; color: rgba(255,255,255,0.5); }
+
+.rail-list { flex: 1; overflow-y: auto; padding: 12px 10px; }
+.rail-list::-webkit-scrollbar { width: 4px; }
+.rail-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.rail-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 8px;
+  font-size: 12.5px; color: rgba(255,255,255,0.55);
+  cursor: pointer; margin-bottom: 2px;
+  border-left: 3px solid transparent;
+  transition: all 0.18s;
+  user-select: none;
+}
+.rail-item .num {
+  font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.3);
+  min-width: 18px;
+}
+.rail-item .label { flex: 1; line-height: 1.3; }
+.rail-item .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.15); flex-shrink: 0;
+}
+.rail-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+.rail-item.active {
+  background: rgba(0,112,242,0.25); color: #fff;
+  border-left-color: var(--sap-blue);
+}
+.rail-item.active .dot { background: #5bbbff; }
+.rail-item.active .num { color: #5bbbff; }
+
+.rail-footer {
+  padding: 14px 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 10.5px; color: rgba(255,255,255,0.3);
+}
+.rail-footer span { color: rgba(255,255,255,0.6); font-weight: 600; }
+
+/* ── Main ── */
+.main { display: flex; flex-direction: column; overflow: hidden; }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px; height: 56px; background: var(--rail);
+  border-bottom: 1px solid var(--line); flex-shrink: 0;
+}
+.topbar .breadcrumb { font-size: 12px; color: var(--ink-dim); }
+.topbar .breadcrumb strong { color: var(--ink); font-weight: 600; }
+.topbar .nav-group { display: flex; gap: 8px; }
+.topbar .pill {
+  font-size: 11px; padding: 4px 12px; border-radius: 20px;
+  background: #e8f4fd; color: var(--sap-blue); font-weight: 600;
+  cursor: pointer; border: 1px solid #c2dff7;
+  transition: all 0.18s;
+}
+.topbar .pill:hover { background: var(--sap-blue); color: #fff; }
+.topbar .pill.ghost { background: transparent; color: var(--ink-dim); border-color: var(--line); }
+.topbar .pill.ghost:hover { background: var(--sap-dark); color: #fff; border-color: var(--sap-dark); }
+
+/* ── Progress Bar ── */
+.progress-bar { height: 3px; background: var(--line); flex-shrink: 0; }
+.progress-fill { height: 100%; background: var(--sap-blue); transition: width 0.4s ease; border-radius: 0 2px 2px 0; }
+
+/* ── Content ── */
+.content { flex: 1; overflow-y: auto; padding: 28px 32px 48px; }
+.content::-webkit-scrollbar { width: 6px; }
+.content::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+
+/* ── Unit Panel ── */
+.unit { display: none; }
+.unit.active { display: block; }
+
+.unit-header { margin-bottom: 24px; }
+.unit-tag { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--sap-blue); margin-bottom: 8px; }
+.unit-title { font-size: 22px; font-weight: 700; color: var(--ink); margin: 0 0 6px; }
+.unit-sub { font-size: 13.5px; color: var(--ink-dim); margin: 0; line-height: 1.6; }
+
+/* ── Architecture Stack ── */
+.arch-stack { display: flex; flex-direction: column; gap: 0; margin: 24px 0; }
+.arch-layer {
+  border: 1.5px solid var(--line);
+  border-radius: 0; cursor: pointer;
+  transition: all 0.22s;
+  position: relative; overflow: hidden;
+}
+.arch-layer:first-child { border-radius: 10px 10px 0 0; }
+.arch-layer:last-child { border-radius: 0 0 10px 10px; }
+.arch-layer:not(:first-child) { border-top: none; }
+.arch-layer:hover { z-index: 2; box-shadow: 0 0 0 2px var(--sap-blue); border-color: var(--sap-blue); }
+.arch-layer.open { z-index: 3; box-shadow: 0 4px 20px rgba(0,112,242,0.12); }
+.arch-layer-head {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 20px; background: var(--panel);
+  transition: background 0.18s;
+}
+.arch-layer.open .arch-layer-head { background: #f0f7ff; }
+.arch-layer-icon {
+  width: 38px; height: 38px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.arch-layer-info { flex: 1; }
+.arch-layer-info .l-num { font-size: 10px; font-weight: 700; color: var(--ink-faint); letter-spacing: 0.8px; }
+.arch-layer-info .l-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+.arch-layer-info .l-sub { font-size: 11.5px; color: var(--ink-dim); margin-top: 1px; }
+.arch-layer-arrow { font-size: 16px; color: var(--ink-faint); transition: transform 0.22s; }
+.arch-layer.open .arch-layer-arrow { transform: rotate(180deg); color: var(--sap-blue); }
+.arch-layer-body {
+  display: none; padding: 0 20px 18px;
+  background: #f8fbff; border-top: 1px solid #d8eaff;
+}
+.arch-layer.open .arch-layer-body { display: block; }
+.arch-layer-body p { font-size:13px; color:#2a4570; line-height:1.7; margin:10px 0 6px; }
+.arch-connector {
+  text-align: center; padding: 4px 0; color: var(--sap-blue);
+  font-size: 15px; line-height: 1; font-weight: 600;
+}
+
+/* ── Flow Diagram ── */
+.flow-diagram {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0; margin: 20px 0; padding: 24px;
+  background: #f0f7ff; border-radius: 12px;
+  border: 1.5px solid #c2dff7;
+}
+.flow-node {
+  background: #fff; border: 1.5px solid #c2dff7;
+  border-radius: 8px; padding: 10px 24px; font-size: 13px;
+  font-weight: 600; color: var(--sap-dark); text-align: center;
+  min-width: 260px; cursor: pointer; transition: all 0.18s;
+  position: relative;
+}
+.flow-node:hover { border-color: var(--sap-blue); background: #e8f4fd; transform: translateX(3px); }
+.flow-node.highlight { background: var(--sap-blue); color: #fff; border-color: var(--sap-dark); }
+.flow-arrow { font-size: 20px; color: var(--sap-blue); line-height: 1; padding: 2px 0; }
+.flow-label { font-size: 10px; color: var(--ink-dim); text-align: center; font-style: italic; margin-top: -4px; margin-bottom: 2px; }
+
+/* ── Cards ── */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 16px 0; }
+.card {
+  background: var(--panel); border: 1.5px solid var(--line);
+  border-radius: 10px; padding: 16px;
+  transition: all 0.18s;
+}
+.card:hover { border-color: var(--sap-blue); box-shadow: 0 2px 12px rgba(0,112,242,0.1); transform: translateY(-1px); }
+.card .card-icon { font-size: 22px; margin-bottom: 8px; }
+.card .card-title { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.card .card-body { font-size: 12px; color: var(--ink-dim); line-height: 1.5; }
+
+/* ── Info / Tip / Warn Boxes ── */
+.info-box {
+  display: flex; gap: 12px; padding: 14px 16px;
+  background: #fff8e6; border: 1.5px solid #f5c842;
+  border-radius: 10px; margin: 14px 0;
+}
+.info-box .ib-icon { font-size: 18px; flex-shrink: 0; }
+.info-box .ib-text { font-size: 12.5px; color: #6b4f00; line-height: 1.6; }
+.info-box .ib-text strong { font-weight: 700; color: #4a3400; }
+
+.warn-box {
+  display: flex; gap: 12px; padding: 14px 16px;
+  background: #fff0f0; border: 1.5px solid #f3b0b0;
+  border-radius: 10px; margin: 14px 0;
+}
+.warn-box .wb-icon { font-size: 18px; flex-shrink: 0; }
+.warn-box .wb-text { font-size: 12.5px; color: #7a1414; line-height: 1.6; }
+.warn-box .wb-text strong { font-weight: 700; color: #560000; }
+
+.ok-box {
+  display: flex; gap: 12px; padding: 14px 16px;
+  background: #e8f5ee; border: 1.5px solid #b5dcc5;
+  border-radius: 10px; margin: 14px 0;
+}
+.ok-box .ok-icon { font-size: 18px; flex-shrink: 0; }
+.ok-box .ok-text { font-size: 12.5px; color: #0a4020; line-height: 1.6; }
+.ok-box .ok-text strong { font-weight: 700; color: #063018; }
+
+.tip-box {
+  display: flex; gap: 12px; padding: 16px 18px;
+  background: linear-gradient(135deg, #003169, #0050b3);
+  border-radius: 12px; margin: 20px 0; color: #fff;
+}
+.tip-box .tb-icon { font-size: 22px; flex-shrink: 0; }
+.tip-box .tb-text { font-size: 13px; line-height: 1.7; }
+.tip-box .tb-text strong { color: #ffde6a; }
+
+/* ── Table ── */
+.data-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+.data-table th {
+  background: var(--sap-dark); color: #fff; padding: 10px 14px;
+  text-align: left; font-size: 11.5px; font-weight: 700; letter-spacing: 0.5px;
+}
+.data-table th:first-child { border-radius: 8px 0 0 0; }
+.data-table th:last-child { border-radius: 0 8px 0 0; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: top; }
+.data-table tr:hover td { background: var(--accent-soft); }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.tag-blue { background: #e0efff; color: #0050b3; }
+.tag-green { background: #e8f5ee; color: #107e3e; }
+.tag-orange { background: #fff3e0; color: #8f4a00; }
+.tag-red { background: #fff0f0; color: #990000; }
+.tag-purple { background: #f3eaff; color: #6a1fb0; }
+
+/* ── Code Block ── */
+.code-block {
+  background: #0d1520; color: #c9d8f0; border-radius: 8px;
+  padding: 14px 18px; font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 12px; line-height: 1.7; margin: 12px 0; overflow-x: auto;
+  border: 1px solid #1e2d42; white-space: pre;
+}
+.code-block .c-green { color: #4fd97a; }
+.code-block .c-blue { color: #5bbbff; }
+.code-block .c-yellow { color: #ffd966; }
+.code-block .c-orange { color: #ffaa44; }
+.code-block .c-gray { color: #6b7fa3; }
+.code-block .c-red { color: #ff7a7a; }
+
+/* ── Section Headers ── */
+.section-h { font-size: 15px; font-weight: 700; color: var(--sap-dark); margin: 22px 0 10px; display: flex; align-items: center; gap: 8px; }
+.section-h::before { content: ''; display: inline-block; width: 4px; height: 16px; background: var(--sap-blue); border-radius: 2px; }
+
+/* ── Quiz / Reveal ── */
+.quiz-block { background: #f0f7ff; border: 1.5px solid #c2dff7; border-radius: 10px; padding: 16px 18px; margin: 14px 0; }
+.quiz-q { font-size: 13.5px; font-weight: 600; color: var(--ink); margin-bottom: 10px; }
+.reveal-btn {
+  background: var(--sap-blue); color: #fff; border: none;
+  padding: 8px 18px; border-radius: 6px; font-size: 12.5px;
+  font-weight: 600; cursor: pointer; transition: all 0.18s;
+}
+.reveal-btn:hover { background: var(--sap-dark); }
+.quiz-ans { display: none; margin-top: 12px; font-size: 13px; color: var(--ink); line-height: 1.6; padding-top: 10px; border-top: 1px solid #c2dff7; }
+.quiz-ans.visible { display: block; }
+.check { color: var(--sap-green); font-weight: 700; }
+
+/* ── Accordion ── */
+.accordion { margin: 8px 0; }
+.acc-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; background: var(--panel);
+  border: 1.5px solid var(--line); border-radius: 8px;
+  cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink);
+  transition: all 0.18s; user-select: none;
+}
+.acc-head:hover { background: var(--accent-soft); border-color: var(--sap-blue); color: var(--sap-blue); }
+.acc-head.open { background: var(--accent-soft); border-color: var(--sap-blue); color: var(--sap-blue); border-radius: 8px 8px 0 0; }
+.acc-arrow { transition: transform 0.22s; }
+.acc-head.open .acc-arrow { transform: rotate(180deg); }
+.acc-body { display: none; padding: 14px 16px; background: #f8fbff; border: 1.5px solid var(--sap-blue); border-top: none; border-radius: 0 0 8px 8px; font-size: 12.5px; color: var(--ink-dim); line-height: 1.7; }
+.acc-head.open + .acc-body { display: block; }
+.acc-body strong { color: var(--ink); }
+
+/* ── 3-Layer Visual ── */
+.three-layer {
+  display: grid; grid-template-rows: auto auto auto;
+  gap: 0; margin: 16px 0; border-radius: 12px; overflow: hidden;
+  border: 1.5px solid var(--line);
+}
+.layer-band { padding: 14px 20px; text-align: center; font-weight: 700; font-size: 13px; }
+.layer-band .lb-items { font-size: 11.5px; font-weight: 400; margin-top: 4px; opacity: 0.85; }
+.layer-arrow-band { text-align: center; padding: 6px; font-size: 22px; background: var(--bg); color: var(--sap-blue); }
+
+/* ── Objectives Grid ── */
+.obj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 12px; margin: 16px 0; }
+.obj-item {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: var(--panel); border: 1.5px solid var(--line);
+  border-radius: 10px; padding: 14px; transition: all 0.18s;
+}
+.obj-item:hover { border-color: var(--sap-blue); transform: translateY(-1px); box-shadow: 0 2px 12px rgba(0,112,242,0.08); }
+.obj-item .obj-n { width: 24px; height: 24px; border-radius: 50%; background: var(--sap-blue); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.obj-item .obj-t { font-size: 12.5px; color: var(--ink); line-height: 1.5; font-weight: 600; }
+
+/* ── FLP Tile Demo (Interactive) ── */
+.tile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 14px; margin: 16px 0; }
+.fiori-tile {
+  background: #fff; border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px; min-height: 108px; cursor: pointer;
+  display: flex; flex-direction: column; justify-content: space-between;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05); transition: all 0.18s; user-select: none;
+  position: relative; overflow: hidden;
+}
+.fiori-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,112,242,0.15); border-color: var(--sap-blue); }
+.fiori-tile .t-icon { font-size: 22px; }
+.fiori-tile .t-title { font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 6px; }
+.fiori-tile .t-sub { font-size: 11px; color: var(--ink-dim); margin-top: 2px; }
+.fiori-tile .t-count { font-size: 30px; font-weight: 800; color: var(--sap-blue); line-height: 1; margin-top: 4px; }
+.fiori-tile .t-type { position: absolute; top: 8px; right: 8px; font-size: 8.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--ink-faint); background: var(--bg); padding: 2px 6px; border-radius: 4px; }
+.fiori-tile.news { background: linear-gradient(135deg,#003169,#0050b3); border: none; }
+.fiori-tile.news .t-title, .fiori-tile.news .t-sub { color: #fff; }
+.fiori-tile.news .t-type { background: rgba(255,255,255,0.15); color: #cfe4ff; }
+.fiori-tile.launch { animation: launchPop 0.4s ease; }
+@keyframes launchPop { 0%{transform:scale(1);} 45%{transform:scale(0.94);} 100%{transform:scale(1);} }
+.count-flash { animation: countFlash 0.5s ease; }
+@keyframes countFlash { 0%{ color: var(--sap-green); transform: scale(1.25);} 100%{ color: var(--sap-blue); transform: scale(1);} }
+.tile-controls { display:flex; gap:8px; flex-wrap: wrap; margin: 10px 0 4px; }
+.mini-btn {
+  background: var(--sap-blue); color:#fff; border:none; padding:7px 14px;
+  border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; transition: all .18s;
+}
+.mini-btn:hover { background: var(--sap-dark); }
+.mini-btn.ghost { background:#e8f4fd; color: var(--sap-blue); border:1px solid #c2dff7; }
+.mini-btn.ghost:hover { background: var(--sap-blue); color:#fff; }
+.launch-log { min-height: 20px; font-size: 12.5px; color: var(--sap-green); font-weight: 600; margin-top: 6px; }
+
+/* ── Intent Builder (Interactive) ── */
+.intent-builder { background:#f0f7ff; border:1.5px solid #c2dff7; border-radius:12px; padding:18px; margin:16px 0; }
+.intent-display {
+  font-family:'JetBrains Mono', Consolas, monospace; font-size:22px; font-weight:700;
+  text-align:center; padding:16px; background:#0d1520; border-radius:8px; margin-bottom:14px;
+  color:#c9d8f0; letter-spacing:1px;
+}
+.intent-display .i-hash { color:#6b7fa3; }
+.intent-display .i-obj { color:#5bbbff; }
+.intent-display .i-dash { color:#6b7fa3; }
+.intent-display .i-act { color:#4fd97a; }
+.chip-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px; align-items:center; }
+.chip-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--ink-dim); min-width:110px; }
+.chip {
+  padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer;
+  border:1.5px solid #c2dff7; background:#fff; color:var(--sap-dark); transition:all .16s; user-select:none;
+}
+.chip:hover { border-color:var(--sap-blue); background:#e8f4fd; }
+.chip.sel-obj { background:var(--sap-blue); color:#fff; border-color:var(--sap-dark); }
+.chip.sel-act { background:var(--sap-green); color:#fff; border-color:#0a5a2c; }
+
+/* ── Two-Chain Compare ── */
+.chain-wrap { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:16px 0; }
+@media (max-width: 720px){ .chain-wrap { grid-template-columns:1fr; } }
+.chain-col { border:1.5px solid var(--line); border-radius:12px; overflow:hidden; }
+.chain-col .chain-head { padding:12px 16px; font-weight:700; font-size:13px; color:#fff; display:flex; align-items:center; gap:8px; }
+.chain-col.auth .chain-head { background: var(--sap-orange); }
+.chain-col.vis .chain-head { background: var(--sap-green); }
+.chain-body { padding:16px; }
+.chain-step { background:#f8fbff; border:1.5px solid var(--line); border-radius:8px; padding:10px 14px; font-size:12.5px; font-weight:600; color:var(--ink); text-align:center; margin-bottom:0; }
+.chain-conn { text-align:center; font-size:16px; color:var(--ink-faint); padding:2px 0; }
+.chain-verdict { margin-top:12px; text-align:center; font-size:12px; font-weight:700; padding:8px; border-radius:8px; }
+.chain-col.auth .chain-verdict { background:#fff3e0; color:#8f4a00; }
+.chain-col.vis .chain-verdict { background:#e8f5ee; color:#107e3e; }
+
+/* ── Priority Resolver (Interactive) ── */
+.resolver { background:#f0f7ff; border:1.5px solid #c2dff7; border-radius:12px; padding:18px; margin:16px 0; }
+.app-row { display:flex; align-items:center; gap:12px; background:#fff; border:1.5px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:10px; transition:all .25s; }
+.app-row .app-name { flex:1; font-size:13px; font-weight:700; color:var(--ink); }
+.app-row .app-pri { font-family:'JetBrains Mono',Consolas,monospace; font-size:13px; font-weight:700; color:var(--sap-blue); }
+.app-row .pri-slider { width:130px; }
+.app-row .app-verdict { font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; min-width:78px; text-align:center; }
+.app-row.winner { border-color:var(--sap-green); box-shadow:0 0 0 2px rgba(16,126,62,0.25); background:#f2fbf5; }
+.app-row.winner .app-verdict { background:#e8f5ee; color:#107e3e; }
+.app-row.loser { opacity:0.6; }
+.app-row.loser .app-verdict { background:#f0f0f0; color:#888; }
+.app-row.tie { border-color:var(--sap-orange); background:#fffaf3; }
+.app-row.tie .app-verdict { background:#fff3e0; color:#8f4a00; }
+.resolve-out { margin-top:12px; padding:12px 16px; border-radius:8px; font-size:13px; font-weight:600; text-align:center; }
+
+/* ── Noun / Verb Splitter ── */
+.splitter { display:flex; align-items:stretch; gap:0; margin:16px 0; border-radius:12px; overflow:hidden; border:1.5px solid var(--line); }
+.split-half { flex:1; padding:20px; text-align:center; }
+.split-half.noun { background:#e8f4fd; }
+.split-half.verb { background:#e8f5ee; }
+.split-half .sh-tag { font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
+.split-half.noun .sh-tag { color:var(--sap-blue); }
+.split-half.verb .sh-tag { color:var(--sap-green); }
+.split-half .sh-word { font-family:'JetBrains Mono',Consolas,monospace; font-size:20px; font-weight:800; margin-top:6px; }
+.split-half.noun .sh-word { color:var(--sap-dark); }
+.split-half.verb .sh-word { color:#0a5a2c; }
+.split-half .sh-desc { font-size:11.5px; color:var(--ink-dim); margin-top:4px; }
+.split-div { display:flex; align-items:center; justify-content:center; background:#0d1520; color:#ffd966; font-family:'JetBrains Mono',Consolas,monospace; font-size:20px; font-weight:700; padding:0 14px; }
+
+/* ── Stepper (Lifecycle) ── */
+.stepper { margin:16px 0; }
+.step-item { display:flex; gap:14px; align-items:flex-start; cursor:pointer; }
+.step-rail { display:flex; flex-direction:column; align-items:center; }
+.step-dot { width:30px; height:30px; border-radius:50%; background:var(--line); color:var(--ink-dim); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0; transition:all .2s; border:2px solid transparent; }
+.step-item.open .step-dot { background:var(--sap-blue); color:#fff; border-color:var(--sap-dark); }
+.step-line { width:2px; flex:1; background:var(--line); min-height:14px; }
+.step-item:last-child .step-line { display:none; }
+.step-content { flex:1; padding-bottom:16px; }
+.step-title { font-size:13.5px; font-weight:700; color:var(--ink); padding-top:5px; transition:color .2s; }
+.step-item:hover .step-title { color:var(--sap-blue); }
+.step-detail { display:none; margin-top:8px; background:#f8fbff; border:1.5px solid #d8eaff; border-radius:8px; padding:12px 14px; font-size:12.5px; color:var(--ink-dim); line-height:1.7; }
+.step-item.open .step-detail { display:block; animation: slideDown 0.25s ease; }
+
+/* ── Detail box (flow) ── */
+.detail-box { display:none; }
+
+/* ── Animations ── */
+@keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:0.45; } }
+.pulse { animation: pulse 2s ease-in-out infinite; }
+@keyframes slideDown { from{ opacity:0; transform:translateY(-10px);} to{ opacity:1; transform:translateY(0);} }
+.unit.active { animation: slideDown 0.3s ease; }
+@keyframes dash { to { stroke-dashoffset: 0; } }
+
+/* misc inline code */
+code.k { background:#dce8ff; padding:1px 6px; border-radius:4px; font-family:'JetBrains Mono',Consolas,monospace; font-size:12px; color:#0050b3; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── LEFT RAIL ── -->
+  <div class="rail">
+    <div class="rail-head">
+      <div class="badge">Day 3 · FLP</div>
+      <h1>Fiori Launchpad<br>Configuration</h1>
+      <p>7 Parts · Tiles → Intent → Roles</p>
+    </div>
+    <div class="rail-list">
+      <div class="rail-item active" onclick="showUnit(1,this)">
+        <span class="num">01</span><span class="label">Overview & Objectives</span><span class="dot"></span>
+      </div>
+      <div class="rail-item" onclick="showUnit(2,this)">
+        <span class="num">02</span><span class="label">Part 1 – What is FLP?</span><span class="dot"></span>
+      </div>
+      <div class="rail-item" onclick="showUnit(3,this)">
+        <span class="num">03</span><span class="label">Part 2 – Tile Types</span><span class="dot"></span>
+      </div>
+      <div class="rail-item" onclick="showUnit(4,this)">
+        <span class="num">04</span><span class="label">Part 3 – Intent Navigation</span><span class="dot"></span>
+      </div>
+      <div class="rail-item" onclick="showUnit(5,this)">
+        <span class="num">05</span><span class="label">Part 4 – Target Mapping</span><span class="dot"></span>
+      </div>
+      <div class="rail-item" onclick="showUnit(6,this)">
+        <span class="num">06</span><span class="label">Part 5 – Catalog · Role · Group</span><span class="dot"></span>
+      </div>
+      <div class="rail-item" onclick="showUnit(7,this)">
+        <span class="num">07</span><span class="label">Part 6 – Semantic Object</span><span class="dot"></span>
+      </div>
+      <div class="rail-item" onclick="showUnit(8,this)">
+        <span class="num">08</span><span class="label">Part 7 – Complete Tile Config</span><span class="dot"></span>
+      </div>
+      <div class="rail-item" onclick="showUnit(9,this)">
+        <span class="num">09</span><span class="label">Priority Deep Dive</span><span class="dot"></span>
+      </div>
+      <div class="rail-item" onclick="showUnit(10,this)">
+        <span class="num">10</span><span class="label">Exam · Interview · Homework</span><span class="dot"></span>
+      </div>
+    </div>
+    <div class="rail-footer">
+      <span>C_FIORD</span> · Day 3 FLP Configuration
+    </div>
+  </div>
+
+  <!-- ── MAIN ── -->
+  <div class="main">
+    <div class="topbar">
+      <div class="breadcrumb">Day 3 · SAP Fiori Launchpad &rsaquo; <strong id="topTitle">Overview & Objectives</strong></div>
+      <div class="nav-group">
+        <button class="pill ghost" onclick="prevUnit()">← Prev</button>
+        <button class="pill" onclick="nextUnit()">Next →</button>
+      </div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="prog" style="width:10%"></div></div>
+
+    <div class="content">
+
+      <!-- ═══════════ UNIT 1 — Overview & Objectives ═══════════ -->
+      <div class="unit active" id="unit-1">
+        <div class="unit-header">
+          <div class="unit-tag">Unit 01 · Orientation</div>
+          <h2 class="unit-title">SAP Fiori Launchpad — Day 3 Overview</h2>
+          <p class="unit-sub">The Fiori Launchpad (FLP) is the shell that hosts every Fiori app. Today you'll trace how a single tile becomes a running application — through intents, target mappings, catalogs, roles, and groups.</p>
+        </div>
+
+        <div class="section-h">Learning Objectives (click to expand each)</div>
+        <div class="obj-grid">
+          <div class="obj-item"><div class="obj-n">1</div><div class="obj-t">What FLP actually is (a shell, not an app)</div></div>
+          <div class="obj-item"><div class="obj-n">2</div><div class="obj-t">How a tile launches an application</div></div>
+          <div class="obj-item"><div class="obj-n">3</div><div class="obj-t">What Intent-Based Navigation is</div></div>
+          <div class="obj-item"><div class="obj-n">4</div><div class="obj-t">What Target Mapping does</div></div>
+          <div class="obj-item"><div class="obj-n">5</div><div class="obj-t">Catalogs, Groups, and Roles</div></div>
+          <div class="obj-item"><div class="obj-n">6</div><div class="obj-t">How users actually see applications</div></div>
+          <div class="obj-item"><div class="obj-n">7</div><div class="obj-t">How a complete Fiori tile is configured end-to-end</div></div>
+        </div>
+
+        <div class="section-h">The Big Picture — Where FLP Sits</div>
+        <div class="three-layer" style="margin-top:8px;">
+          <div class="layer-band" style="background:#003169;color:#fff;">
+            Shell / Entry Layer
+            <div class="lb-items">Fiori Launchpad · Tiles · Intent Navigation · Target Mapping</div>
+          </div>
+          <div class="layer-arrow-band">⇅</div>
+          <div class="layer-band" style="background:#0070f2;color:#fff;">
+            Application Layer
+            <div class="lb-items">SAPUI5 App · OData · Gateway · ABAP</div>
+          </div>
+          <div class="layer-arrow-band">⇅</div>
+          <div class="layer-band" style="background:#107e3e;color:#fff;">
+            Database Layer
+            <div class="lb-items">SAP HANA</div>
+          </div>
+        </div>
+
+        <div class="tip-box">
+          <div class="tb-icon">🧭</div>
+          <div class="tb-text">
+            <strong>One idea to hold onto all day:</strong><br><br>
+            "FLP doesn't know URLs — it understands <strong>business intents</strong>." Every concept today (Semantic Objects, Actions, Target Mappings, Intent-Based Navigation) exists to serve that single idea.
+          </div>
+        </div>
+
+        <div class="info-box">
+          <div class="ib-icon">💡</div>
+          <div class="ib-text"><strong>How to use this visualizer:</strong> Use the left rail or <strong>Next →</strong> to move part-by-part. Almost every panel has something to click — expand layers, build intents, drag priorities, and reveal answers.</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ UNIT 2 — What is FLP? ═══════════ -->
+      <div class="unit" id="unit-2">
+        <div class="unit-header">
+          <div class="unit-tag">Part 01 · Foundation</div>
+          <h2 class="unit-title">What is the Fiori Launchpad?</h2>
+          <p class="unit-sub">The single most common beginner mistake: thinking FLP is a Fiori application. It is not. FLP is the <em>container</em> that hosts all Fiori applications.</p>
+        </div>
+
+        <div class="warn-box">
+          <div class="wb-icon">❌</div>
+          <div class="wb-text"><strong>Myth:</strong> "FLP = a Fiori Application."&nbsp; <strong>Reality:</strong> FLP is a shell / container. It launches apps but is not itself a business app.</div>
+        </div>
+
+        <div class="section-h">The Analogy — FLP is like an Operating System</div>
+        <div class="tile-controls">
+          <button class="mini-btn" id="anaWinBtn" onclick="showAnalogy('win')">🪟 Windows Desktop</button>
+          <button class="mini-btn ghost" id="anaDroidBtn" onclick="showAnalogy('droid')">📱 Android Phone</button>
+        </div>
+
+        <div id="ana-win">
+          <div class="chain-wrap">
+            <div class="chain-col auth" style="border-color:#c2dff7;">
+              <div class="chain-head" style="background:#0050b3;">🪟 Windows launches…</div>
+              <div class="chain-body">
+                <div class="chain-step">📁 My Computer</div><div class="chain-conn">↓</div>
+                <div class="chain-step">🌐 Chrome</div><div class="chain-conn">↓</div>
+                <div class="chain-step">🎵 Spotify</div><div class="chain-conn">↓</div>
+                <div class="chain-step">📄 Word</div>
+                <div class="chain-verdict" style="background:#e8f4fd;color:#0050b3;">Windows ≠ Chrome. Windows <b>launches</b> Chrome.</div>
+              </div>
+            </div>
+            <div class="chain-col vis" style="border-color:#c2dff7;">
+              <div class="chain-head" style="background:#003169;">🚀 FLP launches…</div>
+              <div class="chain-body">
+                <div class="chain-step">📝 Leave Request</div><div class="chain-conn">↓</div>
+                <div class="chain-step">🛒 Purchase Order</div><div class="chain-conn">↓</div>
+                <div class="chain-step">💰 Expense Approval</div><div class="chain-conn">↓</div>
+                <div class="chain-step">👨 Employee Profile</div>
+                <div class="chain-verdict" style="background:#e8f4fd;color:#0050b3;">FLP ≠ an app. FLP <b>launches</b> apps.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="ana-droid" style="display:none;">
+          <div class="info-box">
+            <div class="ib-icon">📱</div>
+            <div class="ib-text">Android isn't WhatsApp. Android provides the <strong>Home Screen, Notifications, Search, Settings, and App Launcher</strong> — then launches WhatsApp, Instagram, YouTube. FLP does exactly the same for Fiori apps.</div>
+          </div>
+          <div class="code-block">
+<span class="c-gray">Android</span>              <span class="c-gray">SAP Fiori Launchpad</span>
+   ↓                        ↓
+<span class="c-blue">WhatsApp</span>            <span class="c-yellow">Leave Request</span>
+   ↓                        ↓
+<span class="c-blue">Instagram</span>           <span class="c-yellow">Purchase Order</span>
+   ↓                        ↓
+<span class="c-blue">YouTube</span>             <span class="c-yellow">Expense Approval</span>
+
+<span class="c-green">The OS provides the shell. The apps run inside it.</span>
+          </div>
+        </div>
+
+        <div class="section-h">What Does FLP Provide? (click each service)</div>
+        <div class="arch-stack">
+          <div class="arch-layer" onclick="toggleLayer(this)">
+            <div class="arch-layer-head">
+              <div class="arch-layer-icon" style="background:#e8f4fd;">🏠</div>
+              <div class="arch-layer-info"><div class="l-num">SERVICE 1</div><div class="l-name">Tile Home Page</div><div class="l-sub">The landing screen of tiles</div></div>
+              <div class="arch-layer-arrow">▾</div>
+            </div>
+            <div class="arch-layer-body"><p>The home page is a grid of tiles grouped into Groups / Spaces & Pages. It is the first thing a user sees after login — the "desktop of SAP."</p></div>
+          </div>
+          <div class="arch-connector">+</div>
+          <div class="arch-layer" onclick="toggleLayer(this)">
+            <div class="arch-layer-head">
+              <div class="arch-layer-icon" style="background:#e8f5ee;">🔍</div>
+              <div class="arch-layer-info"><div class="l-num">SERVICE 2</div><div class="l-name">Search & Notifications</div><div class="l-sub">Enterprise search · workflow alerts</div></div>
+              <div class="arch-layer-arrow">▾</div>
+            </div>
+            <div class="arch-layer-body"><p>Global enterprise search finds apps and data across the system. The notification area surfaces workflow tasks and approvals — users can often act directly from the notification.</p></div>
+          </div>
+          <div class="arch-connector">+</div>
+          <div class="arch-layer" onclick="toggleLayer(this)">
+            <div class="arch-layer-head">
+              <div class="arch-layer-icon" style="background:#fff3e0;">🧭</div>
+              <div class="arch-layer-info"><div class="l-num">SERVICE 3</div><div class="l-name">Intent Navigation</div><div class="l-sub">Resolves #Object-Action to an app</div></div>
+              <div class="arch-layer-arrow">▾</div>
+            </div>
+            <div class="arch-layer-body"><p>The navigation service turns a business intent like <code class="k">#LeaveRequest-create</code> into the correct running application. This is the heart of Part 3.</p></div>
+          </div>
+          <div class="arch-connector">+</div>
+          <div class="arch-layer" onclick="toggleLayer(this)">
+            <div class="arch-layer-head">
+              <div class="arch-layer-icon" style="background:#f3eaff;">⚙️</div>
+              <div class="arch-layer-info"><div class="l-num">SERVICE 4</div><div class="l-name">Personalization & Settings</div><div class="l-sub">Theme · Language · User settings</div></div>
+              <div class="arch-layer-arrow">▾</div>
+            </div>
+            <div class="arch-layer-body"><p>Users personalize their home page, switch theme (e.g. SAP Horizon), change language, and adjust content density — all from the shell, without touching any single app.</p></div>
+          </div>
+        </div>
+
+        <div class="warn-box">
+          <div class="wb-icon">🚫</div>
+          <div class="wb-text"><strong>FLP has NO business logic.</strong> It never creates Sales Orders, never approves Leave, never saves Employee Data. It only <em>launches</em> the applications that do those things.</div>
+        </div>
+
+        <div class="section-h">Where FLP Sits in the Architecture</div>
+        <div class="flow-diagram">
+          <div class="flow-node">🌐 Browser</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node highlight">🚀 Fiori Launchpad &nbsp;(the shell)</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node">⚛️ SAPUI5 App</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node">🔗 Gateway</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node">⚙️ ABAP</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node">🗄️ HANA</div>
+        </div>
+
+        <div class="quiz-block">
+          <div class="quiz-q">Q: Why is FLP called a "shell" instead of an application?</div>
+          <button class="reveal-btn" onclick="reveal(this)">Reveal Answer</button>
+          <div class="quiz-ans"><span class="check">✓</span> Because FLP is the <strong>hosting container</strong> that provides cross-app services — home page, search, notifications, intent navigation, personalization, theming — and <em>launches</em> business apps inside it. It contains no business logic of its own, exactly like an operating system shell hosts programs.</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ UNIT 3 — Tile Types ═══════════ -->
+      <div class="unit" id="unit-3">
+        <div class="unit-header">
+          <div class="unit-tag">Part 02 · Tiles</div>
+          <h2 class="unit-title">The 4 Tile Types</h2>
+          <p class="unit-sub">Every tile inside FLP is a launch point — but they don't all behave the same. SAP defines four major tile types. Click the tiles below to see how each behaves.</p>
+        </div>
+
+        <div class="section-h">Live Tile Playground (click a tile)</div>
+        <div class="tile-grid">
+          <div class="fiori-tile" onclick="launchTile(this,'Static','Leave Request opened — no live data, just launches the app.')">
+            <span class="t-type">Static</span>
+            <div><div class="t-icon">📝</div><div class="t-title">Leave Request</div></div>
+            <div class="t-sub">Apply Leave</div>
+          </div>
+          <div class="fiori-tile" onclick="launchTile(this,'Dynamic','Dynamic tile opened Approvals app. The count came from a $count OData call.')">
+            <span class="t-type">Dynamic ⭐</span>
+            <div><div class="t-icon">✅</div><div class="t-title">Approvals</div></div>
+            <div class="t-count" id="dynCount">47</div>
+          </div>
+          <div class="fiori-tile news" onclick="launchTile(this,'News','News tile opened the news feed — content keeps rotating.')">
+            <span class="t-type">News</span>
+            <div><div class="t-icon">📰</div><div class="t-title">Company News</div></div>
+            <div class="t-sub" id="newsLine">Holiday Tomorrow</div>
+          </div>
+          <div class="fiori-tile" onclick="launchTile(this,'Custom','Custom tile launched a company-built SAPUI5 widget.')">
+            <span class="t-type">Custom</span>
+            <div><div class="t-icon">🌤️</div><div class="t-title">Weather</div></div>
+            <div class="t-sub">28°C · Chennai</div>
+          </div>
+        </div>
+        <div class="tile-controls">
+          <button class="mini-btn" onclick="refreshDynamic()">🔄 Refresh Dynamic Count</button>
+          <button class="mini-btn ghost" onclick="cycleNews()">📰 Next News Item</button>
+        </div>
+        <div class="launch-log" id="tileLog">↑ Click any tile to launch it.</div>
+
+        <div class="section-h">1 · Static Tile</div>
+        <div class="card" style="max-width:100%;">
+          <div class="card-body">Always looks the same — no changing numbers. It simply launches an application when clicked. Example: <strong>Apply Leave</strong> → opens the Leave Request app.</div>
+        </div>
+
+        <div class="section-h">2 · Dynamic Tile ⭐ (Interview Favourite)</div>
+        <div class="info-box">
+          <div class="ib-icon">📊</div>
+          <div class="ib-text">A manager with 47 pending approvals sees the number <strong>on the tile itself</strong> — no need to open the app. Tomorrow it may read 52, then 18. The number updates automatically.</div>
+        </div>
+        <div class="section-h" style="font-size:13px;">Where does that number come from?</div>
+        <div class="code-block">
+<span class="c-gray"># The tile periodically calls an OData service:</span>
+<span class="c-blue">GET</span> /sap/opu/odata/sap/ZWFAPPROVAL_SRV/<span class="c-yellow">ApprovalSet</span>/<span class="c-green">$count</span>?$filter=Status eq 'Pending'
+
+<span class="c-gray"># Breakdown</span>
+<span class="c-blue">GET</span>          <span class="c-gray">→ read data</span>
+<span class="c-yellow">ApprovalSet</span>  <span class="c-gray">→ entity holding approvals</span>
+$filter      <span class="c-gray">→ only pending ones</span>
+<span class="c-green">$count</span>       <span class="c-gray">→ return ONLY the number</span>
+
+<span class="c-gray"># Response is a PLAIN number — not JSON:</span>
+<span class="c-green">47</span>          <span class="c-gray">✓  (NOT { "count": 47 })</span>
+        </div>
+        <div class="warn-box">
+          <div class="wb-icon">⚠️</div>
+          <div class="wb-text">A Dynamic Tile expects the <strong>raw scalar</strong> <code class="k">47</code>, not an object <code class="k">{"count":47}</code>. That's exactly what <code class="k">$count</code> returns — which is why Dynamic Tiles use it.</div>
+        </div>
+
+        <div class="section-h">3 · News Tile &nbsp;&nbsp; 4 · Custom Tile</div>
+        <div class="cards">
+          <div class="card">
+            <div class="card-icon">📰</div>
+            <div class="card-title">News Tile</div>
+            <div class="card-body">Displays a rotating feed instead of numbers — company news, releases, security patches. Content keeps changing.</div>
+          </div>
+          <div class="card">
+            <div class="card-icon">🧩</div>
+            <div class="card-title">Custom Tile</div>
+            <div class="card-body">Build your own SAPUI5 component and render it as a tile — Weather, Currency, Stock Price, AI Dashboard. Anything company-specific.</div>
+          </div>
+        </div>
+
+        <div class="section-h">Quick Comparison</div>
+        <table class="data-table">
+          <thead><tr><th>Tile Type</th><th>Purpose</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag tag-blue">Static</span></td><td>Launch an app</td><td>Leave Request</td></tr>
+            <tr><td><span class="tag tag-orange">Dynamic</span></td><td>Show a live count</td><td>Pending Approvals (47)</td></tr>
+            <tr><td><span class="tag tag-green">News</span></td><td>Display a changing feed</td><td>Company News</td></tr>
+            <tr><td><span class="tag tag-purple">Custom</span></td><td>Company-specific widget</td><td>Weather Dashboard</td></tr>
+          </tbody>
+        </table>
+
+        <div class="quiz-block">
+          <div class="quiz-q">Q: Why does a Dynamic Tile use the <code class="k">$count</code> OData query option?</div>
+          <button class="reveal-btn" onclick="reveal(this)">Reveal Answer</button>
+          <div class="quiz-ans"><span class="check">✓</span> Because a Dynamic Tile only needs a single number to display, and <code class="k">$count</code> returns exactly that — a plain scalar value (e.g. <code class="k">47</code>) rather than a full JSON payload. It's lightweight, fast to poll periodically, and matches the exact format the tile's data source expects.</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ UNIT 4 — Intent-Based Navigation ═══════════ -->
+      <div class="unit" id="unit-4">
+        <div class="unit-header">
+          <div class="unit-tag">Part 03 · Navigation</div>
+          <h2 class="unit-title">Intent-Based Navigation</h2>
+          <p class="unit-sub">One of the most important concepts in SAP Fiori. When you click a tile, FLP does <em>not</em> open a hardcoded URL. It creates an <strong>Intent</strong> and resolves it to the right app.</p>
+        </div>
+
+        <div class="warn-box">
+          <div class="wb-icon">❌</div>
+          <div class="wb-text"><strong>Common misconception:</strong> "Click Tile → Open URL." &nbsp;SAP never opens a hardcoded URL directly. Instead it generates an <strong>Intent</strong>.</div>
+        </div>
+
+        <div class="section-h">What is an Intent? — Build one (click chips)</div>
+        <div class="intent-builder">
+          <div class="intent-display">
+            <span class="i-hash">#</span><span class="i-obj" id="ib-obj">LeaveRequest</span><span class="i-dash">-</span><span class="i-act" id="ib-act">create</span>
+          </div>
+          <div class="chip-row">
+            <span class="chip-label">Semantic Object</span>
+            <span class="chip sel-obj" onclick="pickObj(this,'LeaveRequest')">LeaveRequest</span>
+            <span class="chip" onclick="pickObj(this,'Employee')">Employee</span>
+            <span class="chip" onclick="pickObj(this,'SalesOrder')">SalesOrder</span>
+            <span class="chip" onclick="pickObj(this,'Product')">Product</span>
+          </div>
+          <div class="chip-row">
+            <span class="chip-label">Action</span>
+            <span class="chip sel-act" onclick="pickAct(this,'create')">create</span>
+            <span class="chip" onclick="pickAct(this,'display')">display</span>
+            <span class="chip" onclick="pickAct(this,'manage')">manage</span>
+            <span class="chip" onclick="pickAct(this,'approve')">approve</span>
+          </div>
+          <div class="launch-log" id="intentReading" style="margin-top:10px;">Reading: Open → <b>LeaveRequest</b> → in <b>create</b> mode</div>
+        </div>
+
+        <div class="section-h">General Format</div>
+        <div class="splitter">
+          <div class="split-half noun">
+            <div class="sh-tag">Semantic Object · Noun</div>
+            <div class="sh-word">#SemanticObject</div>
+            <div class="sh-desc">The business thing (Employee, SalesOrder…)</div>
+          </div>
+          <div class="split-div">-</div>
+          <div class="split-half verb">
+            <div class="sh-tag">Action · Verb</div>
+            <div class="sh-word">Action</div>
+            <div class="sh-desc">What you do to it (display, manage…)</div>
+          </div>
+        </div>
+
+        <div class="section-h">Full Navigation Flow (click each step)</div>
+        <div class="flow-diagram">
+          <div class="flow-node" onclick="showDetail('n1',this)">🖱️ User clicks 📝 Leave Request tile</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node" onclick="showDetail('n2',this)">🧭 FLP generates intent #LeaveRequest-create</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node" onclick="showDetail('n3',this)">📡 Navigation Service catches the intent</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node" onclick="showDetail('n4',this)">🔎 Reads Semantic Object + Action</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node" onclick="showDetail('n5',this)">🗺️ Searches Target Mapping</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node" onclick="showDetail('n6',this)">🔐 Checks authorization</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node" onclick="showDetail('n7',this)">⚛️ Loads SAPUI5 app + passes parameters</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node" onclick="showDetail('n8',this)">✅ Application opens</div>
+        </div>
+        <div id="n1" class="detail-box" style="background:#f0f7ff;border:1.5px solid #c2dff7;border-radius:10px;padding:14px 18px;margin:10px 0;font-size:13px;color:#2a4570;line-height:1.7;"><strong>Step 1 — Click:</strong> The user taps the Leave Request tile. Nothing is hardcoded yet — no URL is opened.</div>
+        <div id="n2" class="detail-box" style="background:#f0f7ff;border:1.5px solid #c2dff7;border-radius:10px;padding:14px 18px;margin:10px 0;font-size:13px;color:#2a4570;line-height:1.7;"><strong>Step 2 — Intent generated:</strong> FLP builds the intent <code class="k">#LeaveRequest-create</code> from the tile's configuration. Think of it as a business command, not an address.</div>
+        <div id="n3" class="detail-box" style="background:#fff3e0;border:1.5px solid #f5c842;border-radius:10px;padding:14px 18px;margin:10px 0;font-size:13px;color:#4a3400;line-height:1.7;"><strong>Step 3 — Navigation Service:</strong> The FLP Navigation Service intercepts the intent and takes ownership of resolving it.</div>
+        <div id="n4" class="detail-box" style="background:#fff3e0;border:1.5px solid #f5c842;border-radius:10px;padding:14px 18px;margin:10px 0;font-size:13px;color:#4a3400;line-height:1.7;"><strong>Step 4 — Parse:</strong> It splits the intent into Semantic Object = <code class="k">LeaveRequest</code> and Action = <code class="k">create</code>.</div>
+        <div id="n5" class="detail-box" style="background:#e8f5ee;border:1.5px solid #b5dcc5;border-radius:10px;padding:14px 18px;margin:10px 0;font-size:13px;color:#0a4020;line-height:1.7;"><strong>Step 5 — Target Mapping lookup:</strong> It searches the Target Mappings for a matching Object + Action pair to find which application should handle it (covered in Part 4).</div>
+        <div id="n6" class="detail-box" style="background:#e8f5ee;border:1.5px solid #b5dcc5;border-radius:10px;padding:14px 18px;margin:10px 0;font-size:13px;color:#0a4020;line-height:1.7;"><strong>Step 6 — Authorization:</strong> It confirms the user is authorized (via their Role/Catalog) to open the resolved application.</div>
+        <div id="n7" class="detail-box" style="background:#f3eaff;border:1.5px solid #c9a8f0;border-radius:10px;padding:14px 18px;margin:10px 0;font-size:13px;color:#2a0060;line-height:1.7;"><strong>Step 7 — Load:</strong> The matched SAPUI5 application is loaded and any parameters (e.g. mode = create) are passed to it.</div>
+        <div id="n8" class="detail-box" style="background:#e8f5ee;border:1.5px solid #b5dcc5;border-radius:10px;padding:14px 18px;margin:10px 0;font-size:13px;color:#0a4020;line-height:1.7;"><strong>Step 8 — Open:</strong> The application renders in create mode. The user never saw a URL — only a business intent was expressed. ✓</div>
+
+        <div class="section-h">Real-Life Analogy — Calling Uber</div>
+        <div class="chain-wrap">
+          <div class="chain-col auth">
+            <div class="chain-head">🙅 You DON'T say</div>
+            <div class="chain-body">
+              <div class="chain-step">"Drive Car #42"</div>
+              <div class="chain-conn">✕</div>
+              <div class="chain-step" style="font-family:'JetBrains Mono',monospace;">Open /sap/bc/ui5_ui5/sap/zleaveapp</div>
+              <div class="chain-verdict">Hardcoded &amp; brittle — avoid.</div>
+            </div>
+          </div>
+          <div class="chain-col vis">
+            <div class="chain-head">🙆 You DO say</div>
+            <div class="chain-body">
+              <div class="chain-step">"Take me to the Airport"</div>
+              <div class="chain-conn">✓</div>
+              <div class="chain-step" style="font-family:'JetBrains Mono',monospace;">#LeaveRequest-create</div>
+              <div class="chain-verdict">Express intent — FLP decides the app.</div>
+            </div>
+          </div>
+        </div>
+        <div class="info-box">
+          <div class="ib-icon">🚕</div>
+          <div class="ib-text">Uber decides <em>which driver, which route, which car</em>. Likewise, FLP decides <em>which application</em> handles your intent. You express <strong>what</strong> you want, not <strong>how</strong> to reach it.</div>
+        </div>
+
+        <div class="quiz-block">
+          <div class="quiz-q">Q: What is Intent-Based Navigation?</div>
+          <button class="reveal-btn" onclick="reveal(this)">Reveal Answer</button>
+          <div class="quiz-ans"><span class="check">✓</span> A navigation mechanism where FLP resolves an <strong>intent</strong> (<code class="k">#SemanticObject-Action</code>) to the correct application using <strong>Target Mapping</strong> — instead of opening a hardcoded URL. This decouples navigation from technical app URLs, so apps can be swapped or upgraded without breaking every link.</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ UNIT 5 — Target Mapping ═══════════ -->
+      <div class="unit" id="unit-5">
+        <div class="unit-header">
+          <div class="unit-tag">Part 04 · Routing</div>
+          <h2 class="unit-title">Target Mapping</h2>
+          <p class="unit-sub">If an Intent is "where I want to go," Target Mapping is the <strong>route</strong> that gets you there. Think of it as Google Maps for FLP — it maps an intent to a concrete application.</p>
+        </div>
+
+        <div class="section-h">The Mental Model</div>
+        <div class="chain-wrap">
+          <div class="chain-col vis">
+            <div class="chain-head">🗺️ Google Maps</div>
+            <div class="chain-body">
+              <div class="chain-step">Destination</div><div class="chain-conn">↓</div>
+              <div class="chain-step">Route</div>
+              <div class="chain-verdict">Maps a place to a path.</div>
+            </div>
+          </div>
+          <div class="chain-col auth">
+            <div class="chain-head" style="background:var(--sap-blue);">🎯 FLP Target Mapping</div>
+            <div class="chain-body">
+              <div class="chain-step">Intent (#Object-Action)</div><div class="chain-conn">↓</div>
+              <div class="chain-step">Application</div>
+              <div class="chain-verdict" style="background:#e8f4fd;color:#0050b3;">Maps an intent to an app.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-h">Anatomy of a Target Mapping</div>
+        <table class="data-table">
+          <thead><tr><th>Field</th><th>Value</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td>Semantic Object</td><td><code class="k">LeaveRequest</code></td><td>The business noun</td></tr>
+            <tr><td>Action</td><td><code class="k">create</code></td><td>The verb</td></tr>
+            <tr><td>App Type</td><td><span class="tag tag-blue">SAPUI5</span></td><td>Kind of target application</td></tr>
+            <tr><td>URL</td><td><code class="k">/sap/bc/ui5_ui5/sap/zleaveapp</code></td><td>Where the app actually lives</td></tr>
+            <tr><td>Priority</td><td><code class="k">100</code></td><td>Which app wins if several match</td></tr>
+          </tbody>
+        </table>
+
+        <div class="section-h">What Happens Without Target Mapping?</div>
+        <div class="flow-diagram" style="background:#fff0f0;border-color:#f3b0b0;">
+          <div class="flow-node" style="border-color:#f3b0b0;">🔲 Tile</div>
+          <div class="flow-arrow" style="color:var(--sap-red);">↓</div>
+          <div class="flow-node" style="border-color:#f3b0b0;">🧭 Intent #LeaveRequest-create</div>
+          <div class="flow-arrow" style="color:var(--sap-red);">↓</div>
+          <div class="flow-node" style="background:var(--sap-red);color:#fff;border-color:#7a1414;">❌ No App Found — navigation fails</div>
+        </div>
+        <div class="warn-box">
+          <div class="wb-icon">💥</div>
+          <div class="wb-text">Without a Target Mapping, the intent resolves to <strong>nothing</strong>. The tile exists, the intent is generated — but FLP has no route, so navigation fails. Target Mapping is the mandatory link between a tile and a real app.</div>
+        </div>
+
+        <div class="section-h">Why Priority? (see it resolve live in Part — Priority Deep Dive)</div>
+        <div class="code-block">
+<span class="c-gray"># Two apps can both create leave requests:</span>
+App A   <span class="c-yellow">Priority 100</span>
+App B   <span class="c-gray">Priority 50</span>
+
+<span class="c-gray"># FLP always chooses the HIGHER priority:</span>
+<span class="c-green">→ App A wins (100 &gt; 50)</span>
+
+<span class="c-red"># If both are equal → behaviour is not deterministic (see Unit 9)</span>
+        </div>
+
+        <div class="quiz-block">
+          <div class="quiz-q">Q: What is Target Mapping?</div>
+          <button class="reveal-btn" onclick="reveal(this)">Reveal Answer</button>
+          <div class="quiz-ans"><span class="check">✓</span> A routing configuration that maps an <strong>intent</strong> (Semantic Object + Action) to a specific application — defining the app type, URL, and priority. Without it, an intent cannot be resolved and navigation fails. It's the "route" half of Intent-Based Navigation.</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ UNIT 6 — Catalog, Role, Group ═══════════ -->
+      <div class="unit" id="unit-6">
+        <div class="unit-header">
+          <div class="unit-tag">Part 05 · Access</div>
+          <h2 class="unit-title">Catalog · Role · Group</h2>
+          <p class="unit-sub">This is where beginners get confused. There are actually <strong>two separate chains</strong>: one decides if you <em>can use</em> an app, the other decides if you <em>can see</em> it on your home page.</p>
+        </div>
+
+        <div class="section-h">The Two Chains (they answer different questions)</div>
+        <div class="chain-wrap">
+          <div class="chain-col auth">
+            <div class="chain-head">🔐 Chain 1 — Authorization</div>
+            <div class="chain-body">
+              <div class="chain-step">User</div><div class="chain-conn">↓</div>
+              <div class="chain-step">Role</div><div class="chain-conn">↓</div>
+              <div class="chain-step">Catalog</div><div class="chain-conn">↓</div>
+              <div class="chain-step">App</div>
+              <div class="chain-verdict">Answers: <b>CAN I USE IT?</b></div>
+            </div>
+          </div>
+          <div class="chain-col vis">
+            <div class="chain-head">👁️ Chain 2 — Visibility</div>
+            <div class="chain-body">
+              <div class="chain-step">Tile</div><div class="chain-conn">↓</div>
+              <div class="chain-step">Group</div><div class="chain-conn">↓</div>
+              <div class="chain-step">Home Page</div>
+              <div class="chain-verdict">Answers: <b>CAN I SEE IT?</b></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-h">The Netflix Analogy</div>
+        <div class="info-box">
+          <div class="ib-icon">🎬</div>
+          <div class="ib-text">You bought Netflix <strong>Premium</strong> → you're <em>authorized</em> to watch any movie. But if you haven't added a film to <strong>"My List,"</strong> it won't show on your home page. You can still <em>search</em> for it and watch it. Authorization ≠ Visibility.</div>
+        </div>
+
+        <div class="section-h">Scenario — Authorized but Invisible</div>
+        <div class="chain-wrap">
+          <div class="chain-col auth">
+            <div class="chain-head">✅ Has HR Role</div>
+            <div class="chain-body">
+              <div class="chain-step">Employee → HR Role → HR Catalog</div>
+              <div class="chain-verdict">Authorized: <b>YES</b></div>
+            </div>
+          </div>
+          <div class="chain-col vis" style="border-color:#f3b0b0;">
+            <div class="chain-head" style="background:var(--sap-red);">🚫 Tile in no Group</div>
+            <div class="chain-body">
+              <div class="chain-step">Home Page → (no tile shown)</div>
+              <div class="chain-verdict" style="background:#fff0f0;color:#990000;">Visible on home: <b>NO</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="ok-box">
+          <div class="ok-icon">🔎</div>
+          <div class="ok-text">The user can still find and launch it via the <strong>App Finder</strong>, because permission comes from the Catalog. The Group only controls whether it appears on the home page.</div>
+        </div>
+
+        <div class="section-h">Easy Way to Remember</div>
+        <div class="cards">
+          <div class="card" style="border-color:#f5c842;background:#fff8e6;">
+            <div class="card-icon">📚</div>
+            <div class="card-title" style="color:#6b4f00;">Catalog → Permission</div>
+            <div class="card-body" style="color:#6b4f00;">"<strong>Can I use it?</strong>" Controls authorization — the set of apps a role is allowed to use.</div>
+          </div>
+          <div class="card" style="border-color:#b5dcc5;background:#e8f5ee;">
+            <div class="card-icon">🗂️</div>
+            <div class="card-title" style="color:#0a4020;">Group → Visibility</div>
+            <div class="card-body" style="color:#0a4020;">"<strong>Can I see it on my home page?</strong>" Controls layout — how tiles are arranged and shown.</div>
+          </div>
+        </div>
+
+        <div class="quiz-block">
+          <div class="quiz-q">Q: What is the difference between a Catalog and a Group?</div>
+          <button class="reveal-btn" onclick="reveal(this)">Reveal Answer</button>
+          <div class="quiz-ans"><span class="check">✓</span> A <strong>Catalog</strong> controls <em>authorization</em> — which apps a user (via their role) is allowed to use. A <strong>Group</strong> controls <em>visibility</em> — which tiles appear on the home page and how they're arranged. A user can be authorized for an app (Catalog) yet not see its tile on the home page (no Group) — but can still launch it from the App Finder.</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ UNIT 7 — Semantic Object ═══════════ -->
+      <div class="unit" id="unit-7">
+        <div class="unit-header">
+          <div class="unit-tag">Part 06 · Building Blocks</div>
+          <h2 class="unit-title">Semantic Object</h2>
+          <p class="unit-sub">Look again at an intent: <code class="k">#LeaveRequest-create</code>. It's built from a <strong>noun</strong> (the Semantic Object) and a <strong>verb</strong> (the Action).</p>
+        </div>
+
+        <div class="section-h">Noun + Verb — the Grammar of an Intent</div>
+        <div class="splitter">
+          <div class="split-half noun">
+            <div class="sh-tag">Noun · Semantic Object</div>
+            <div class="sh-word">LeaveRequest</div>
+            <div class="sh-desc">The business thing</div>
+          </div>
+          <div class="split-div">-</div>
+          <div class="split-half verb">
+            <div class="sh-tag">Verb · Action</div>
+            <div class="sh-word">create</div>
+            <div class="sh-desc">What you do to it</div>
+          </div>
+        </div>
+
+        <div class="section-h">Standard Examples</div>
+        <table class="data-table">
+          <thead><tr><th>Semantic Object</th><th>Action</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code class="k">Employee</code></td><td>display</td><td>Display Employee</td></tr>
+            <tr><td><code class="k">LeaveRequest</code></td><td>create</td><td>Create Leave</td></tr>
+            <tr><td><code class="k">SalesOrder</code></td><td>manage</td><td>Manage Sales Orders</td></tr>
+            <tr><td><code class="k">Product</code></td><td>display</td><td>Display Product</td></tr>
+            <tr><td><code class="k">VendorInvoice</code></td><td>approve</td><td>Approve Vendor Invoice</td></tr>
+          </tbody>
+        </table>
+
+        <div class="section-h">Standard vs Custom Objects</div>
+        <div class="chain-wrap">
+          <div class="chain-col vis">
+            <div class="chain-head" style="background:var(--sap-blue);">🟦 SAP Standard</div>
+            <div class="chain-body">
+              <div class="chain-step">Employee</div><div class="chain-conn">·</div>
+              <div class="chain-step">SalesOrder</div><div class="chain-conn">·</div>
+              <div class="chain-step">Product</div>
+              <div class="chain-verdict" style="background:#e8f4fd;color:#0050b3;">Delivered by SAP</div>
+            </div>
+          </div>
+          <div class="chain-col auth">
+            <div class="chain-head" style="background:var(--sap-green);">🟩 Custom (Z / Y)</div>
+            <div class="chain-body">
+              <div class="chain-step">ZLeaveApproval</div><div class="chain-conn">·</div>
+              <div class="chain-step">ZBudgetRequest</div><div class="chain-conn">·</div>
+              <div class="chain-step">ZProjectManagement</div>
+              <div class="chain-verdict" style="background:#e8f5ee;color:#107e3e;">Your company builds these</div>
+            </div>
+          </div>
+        </div>
+        <div class="info-box">
+          <div class="ib-icon">🔤</div>
+          <div class="ib-text">Notice the <strong>Z</strong> prefix. SAP recommends custom developments use <strong>Z</strong> or <strong>Y</strong> prefixes to avoid clashing with standard SAP objects (which occupy the non-Z/Y namespace).</div>
+        </div>
+
+        <div class="quiz-block">
+          <div class="quiz-q">Q: Why are Semantic Objects important?</div>
+          <button class="reveal-btn" onclick="reveal(this)">Reveal Answer</button>
+          <div class="quiz-ans"><span class="check">✓</span> They provide <strong>business-oriented navigation that is independent of hardcoded application URLs</strong>. By naming the business thing (Employee, SalesOrder) rather than a technical path, apps can be replaced, upgraded, or re-routed via Target Mapping without breaking any navigation links.</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ UNIT 8 — Complete Tile Configuration ═══════════ -->
+      <div class="unit" id="unit-8">
+        <div class="unit-header">
+          <div class="unit-tag">Part 07 · End-to-End</div>
+          <h2 class="unit-title">Complete Tile Configuration</h2>
+          <p class="unit-sub">Your manager says: "Create a new Leave Request tile." Here's the real project sequence — click each step to open it.</p>
+        </div>
+
+        <div class="section-h">The 6-Step Configuration Sequence</div>
+        <div class="stepper">
+          <div class="step-item open" onclick="toggleStep(this)">
+            <div class="step-rail"><div class="step-dot">1</div><div class="step-line"></div></div>
+            <div class="step-content">
+              <div class="step-title">🗺️ Target Mapping</div>
+              <div class="step-detail">Create the mapping: <code class="k">LeaveRequest</code> → <code class="k">create</code> → SAPUI5 Application. This is the route that connects the future intent to the actual app.</div>
+            </div>
+          </div>
+          <div class="step-item" onclick="toggleStep(this)">
+            <div class="step-rail"><div class="step-dot">2</div><div class="step-line"></div></div>
+            <div class="step-content">
+              <div class="step-title">🔲 Tile</div>
+              <div class="step-detail">Create the tile — Title: <b>Leave Request</b>, Icon: 📅, Intent: <code class="k">LeaveRequest-create</code>. This is what the user will click.</div>
+            </div>
+          </div>
+          <div class="step-item" onclick="toggleStep(this)">
+            <div class="step-rail"><div class="step-dot">3</div><div class="step-line"></div></div>
+            <div class="step-content">
+              <div class="step-title">📚 Catalog</div>
+              <div class="step-detail">Create the <b>HR Self Service Catalog</b> and add the Leave Request tile to it. Now the tile is available to be assigned through roles (authorization).</div>
+            </div>
+          </div>
+          <div class="step-item" onclick="toggleStep(this)">
+            <div class="step-rail"><div class="step-dot">4</div><div class="step-line"></div></div>
+            <div class="step-content">
+              <div class="step-title">👔 Role (PFCG)</div>
+              <div class="step-detail">Assign the Catalog to the <b>HR Employee Role</b>. Now anyone who receives this role is authorized to use the application.</div>
+            </div>
+          </div>
+          <div class="step-item" onclick="toggleStep(this)">
+            <div class="step-rail"><div class="step-dot">5</div><div class="step-line"></div></div>
+            <div class="step-content">
+              <div class="step-title">🧑 User</div>
+              <div class="step-detail">Assign the HR Employee Role to a specific user, e.g. <b>Madhesh.P</b>. Now that user has access.</div>
+            </div>
+          </div>
+          <div class="step-item" onclick="toggleStep(this)">
+            <div class="step-rail"><div class="step-dot">6</div><div class="step-line"></div></div>
+            <div class="step-content">
+              <div class="step-title">🗂️ Group</div>
+              <div class="step-detail">Create the <b>HR Self Service</b> group and add the Leave Request tile. Now it finally appears on the user's FLP home page.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-h">Complete Lifecycle Picture</div>
+        <div class="flow-diagram">
+          <div class="flow-node">🧑‍💻 Developer creates the app</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node">🗺️ Target Mapping</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node">🔲 Tile</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node">📚 Catalog</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node">👔 Role (PFCG)</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node">🧑 User</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node">🗂️ Group</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-node highlight">🏠 FLP Home Page ✓</div>
+        </div>
+
+        <div class="tip-box">
+          <div class="tb-icon">🔗</div>
+          <div class="tb-text"><strong>Why this order matters:</strong> Target Mapping first (so the intent resolves), then the Tile (something to click), then Catalog + Role + User (authorization chain), and finally the Group (visibility). Skip the Group and the app still works — it just won't show on the home page.</div>
+        </div>
+
+        <div class="quiz-block">
+          <div class="quiz-q">Q: Explain the complete flow from clicking a tile to opening a SAPUI5 application.</div>
+          <button class="reveal-btn" onclick="reveal(this)">Reveal Answer</button>
+          <div class="quiz-ans"><span class="check">✓</span> The user clicks a tile → FLP generates an intent <code class="k">#SemanticObject-Action</code> → the Navigation Service parses it → it looks up the matching <strong>Target Mapping</strong> → checks the user's authorization (Role → Catalog) → loads the mapped SAPUI5 application, passing parameters → the app opens. The tile only appears on the home page if it's also placed in a <strong>Group</strong>.</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ UNIT 9 — Priority Deep Dive ═══════════ -->
+      <div class="unit" id="unit-9">
+        <div class="unit-header">
+          <div class="unit-tag">Deep Dive · Real-World Config</div>
+          <h2 class="unit-title">Target Mapping Priority</h2>
+          <p class="unit-sub">A common real-world question: when several Target Mappings match the same intent, which app wins? Drag the priorities below and watch FLP resolve the winner live.</p>
+        </div>
+
+        <div class="section-h">Interactive Priority Resolver</div>
+        <div class="resolver">
+          <div style="font-size:12px;color:var(--ink-dim);margin-bottom:12px;">All three apps respond to <code class="k">#LeaveRequest-create</code>. Adjust priorities — higher number wins.</div>
+          <div class="app-row" id="row-a">
+            <span class="app-name">🟩 Custom Leave App</span>
+            <input type="range" class="pri-slider" min="0" max="100" value="100" oninput="resolvePriority()">
+            <span class="app-pri" id="pri-a">100</span>
+            <span class="app-verdict" id="ver-a">—</span>
+          </div>
+          <div class="app-row" id="row-b">
+            <span class="app-name">🟦 SAP Standard Leave App</span>
+            <input type="range" class="pri-slider" min="0" max="100" value="10" oninput="resolvePriority()">
+            <span class="app-pri" id="pri-b">10</span>
+            <span class="app-verdict" id="ver-b">—</span>
+          </div>
+          <div class="app-row" id="row-c">
+            <span class="app-name">🟧 Legacy Fallback App</span>
+            <input type="range" class="pri-slider" min="0" max="100" value="50" oninput="resolvePriority()">
+            <span class="app-pri" id="pri-c">50</span>
+            <span class="app-verdict" id="ver-c">—</span>
+          </div>
+          <div class="resolve-out" id="resolveOut"></div>
+        </div>
+        <div class="info-box">
+          <div class="ib-icon">🧪</div>
+          <div class="ib-text"><strong>Try this:</strong> set two apps to the <em>same</em> highest value and watch the resolver flag a tie — that's exactly the non-deterministic case SAP warns against.</div>
+        </div>
+
+        <div class="section-h">How Priority Works</div>
+        <table class="data-table">
+          <thead><tr><th>App</th><th>Priority</th><th>Result</th></tr></thead>
+          <tbody>
+            <tr><td>App A</td><td><code class="k">100</code></td><td><span class="tag tag-green">✅ Selected</span></td></tr>
+            <tr><td>App B</td><td><code class="k">90</code></td><td><span class="tag tag-red">Ignored</span></td></tr>
+            <tr><td>App C</td><td><code class="k">50</code></td><td><span class="tag tag-red">Ignored</span></td></tr>
+          </tbody>
+        </table>
+        <div class="ok-box">
+          <div class="ok-icon">🔢</div>
+          <div class="ok-text">Priority is a plain integer — <strong>higher wins</strong>. Values are <em>relative</em>: 5 beats 4, and 1000 beats 999. SAP defines no fixed scale (100=High etc.) — only the ordering matters.</div>
+        </div>
+
+        <div class="section-h">The Tie Case — Equal Priority</div>
+        <div class="warn-box">
+          <div class="wb-icon">⚠️</div>
+          <div class="wb-text">If two mappings share the same Semantic Object, Action <em>and</em> Priority, FLP cannot decide by priority. Depending on version/config it may: (1) show an <strong>App Selection (Resolver) dialog</strong>, (2) pick one via internal ordering (<strong>not</strong> reliable), or (3) warn admins about duplicate mappings.</div>
+        </div>
+
+        <div class="section-h">Recommended Project Convention</div>
+        <table class="data-table">
+          <thead><tr><th>Scenario</th><th>Recommended Priority</th></tr></thead>
+          <tbody>
+            <tr><td>Company custom app (Z / Y app)</td><td><span class="tag tag-green">100</span></td></tr>
+            <tr><td>SAP standard app</td><td><span class="tag tag-blue">10 or 50</span></td></tr>
+            <tr><td>Deprecated / fallback app</td><td><span class="tag tag-orange">Lower than the preferred app</span></td></tr>
+          </tbody>
+        </table>
+
+        <div class="section-h">Where You Set It</div>
+        <div class="code-block">
+<span class="c-gray"># In Launchpad Designer (older) or Content Manager / Spaces &amp; Pages (newer)</span>
+Target Mapping
+  Semantic Object : <span class="c-blue">LeaveRequest</span>
+  Action          : <span class="c-green">create</span>
+  Application Type: <span class="c-yellow">SAPUI5</span>
+  URL             : /sap/bc/ui5_ui5/sap/zleaveapp
+  <span class="c-orange">Priority        : 100</span>   <span class="c-gray">← just enter an integer &amp; save</span>
+        </div>
+
+        <div class="ok-box">
+          <div class="ok-icon">✅</div>
+          <div class="ok-text"><strong>Best practice:</strong> Avoid multiple Target Mappings for the same Semantic Object + Action unless you intentionally want several apps for that intent — and if you do, give them distinct priorities so the preferred (usually custom Z) app always wins.</div>
+        </div>
+
+        <div class="quiz-block">
+          <div class="quiz-q">Q: What happens if two Target Mappings have the same Semantic Object, Action, and Priority?</div>
+          <button class="reveal-btn" onclick="reveal(this)">Reveal Answer</button>
+          <div class="quiz-ans"><span class="check">✓</span> FLP finds multiple matching applications but <strong>cannot distinguish them by priority</strong>. Depending on system configuration it may present an app-selection dialog or resolve via internal logic — which should not be relied upon. SAP best practice is to assign <strong>different priorities</strong> or avoid duplicate mappings for the same intent.</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ UNIT 10 — Exam, Interview & Homework ═══════════ -->
+      <div class="unit" id="unit-10">
+        <div class="unit-header">
+          <div class="unit-tag">Reference · Interview Prep</div>
+          <h2 class="unit-title">Exam, Interview &amp; Homework</h2>
+          <p class="unit-sub">The distilled answers examiners look for, the one sentence that ties it all together, and a self-test to prove you've mastered Day 3.</p>
+        </div>
+
+        <div class="section-h">Common Interview Questions (click to reveal)</div>
+        <div class="accordion">
+          <div class="acc-head" onclick="toggleAcc(this)">1 · Is FLP an application? <span class="acc-arrow">▾</span></div>
+          <div class="acc-body">No. It is a <strong>shell / container</strong> that hosts Fiori applications and provides cross-app services (home page, search, notifications, intent navigation, personalization). It contains no business logic.</div>
+        </div>
+        <div class="accordion">
+          <div class="acc-head" onclick="toggleAcc(this)">2 · What is Intent-Based Navigation? <span class="acc-arrow">▾</span></div>
+          <div class="acc-body">A navigation mechanism where FLP resolves an intent (<code class="k">#SemanticObject-Action</code>) to the correct application using <strong>Target Mapping</strong>, rather than opening a hardcoded URL.</div>
+        </div>
+        <div class="accordion">
+          <div class="acc-head" onclick="toggleAcc(this)">3 · What is Target Mapping? <span class="acc-arrow">▾</span></div>
+          <div class="acc-body">A routing configuration that maps an intent to a specific application (defining app type, URL, and priority). Without it, an intent cannot resolve and navigation fails.</div>
+        </div>
+        <div class="accordion">
+          <div class="acc-head" onclick="toggleAcc(this)">4 · Difference between Catalog and Group? <span class="acc-arrow">▾</span></div>
+          <div class="acc-body"><strong>Catalog</strong> controls authorization (who <em>can use</em> the app). <strong>Group</strong> controls visibility (who <em>sees</em> the tile on the home page).</div>
+        </div>
+        <div class="accordion">
+          <div class="acc-head" onclick="toggleAcc(this)">5 · Why are Semantic Objects important? <span class="acc-arrow">▾</span></div>
+          <div class="acc-body">They provide business-oriented navigation that is <strong>independent of hardcoded application URLs</strong> — so apps can change without breaking navigation.</div>
+        </div>
+
+        <div class="section-h">Component Reference</div>
+        <table class="data-table">
+          <thead><tr><th>Concept</th><th>Role</th><th>Answers</th></tr></thead>
+          <tbody>
+            <tr><td><strong>FLP</strong></td><td><span class="tag tag-blue">Shell</span></td><td>Hosts &amp; launches all Fiori apps</td></tr>
+            <tr><td><strong>Tile</strong></td><td><span class="tag tag-blue">Entry</span></td><td>The clickable launch point (Static/Dynamic/News/Custom)</td></tr>
+            <tr><td><strong>Intent</strong></td><td><span class="tag tag-purple">Command</span></td><td><code class="k">#Object-Action</code> — what the user wants</td></tr>
+            <tr><td><strong>Semantic Object</strong></td><td><span class="tag tag-purple">Noun</span></td><td>The business thing (Employee, LeaveRequest)</td></tr>
+            <tr><td><strong>Target Mapping</strong></td><td><span class="tag tag-green">Route</span></td><td>Maps intent → application (+ priority)</td></tr>
+            <tr><td><strong>Catalog</strong></td><td><span class="tag tag-orange">Authorization</span></td><td>Can I <em>use</em> it?</td></tr>
+            <tr><td><strong>Role (PFCG)</strong></td><td><span class="tag tag-orange">Authorization</span></td><td>Assigns catalogs to users</td></tr>
+            <tr><td><strong>Group</strong></td><td><span class="tag tag-green">Visibility</span></td><td>Can I <em>see</em> it on my home page?</td></tr>
+          </tbody>
+        </table>
+
+        <div class="tip-box">
+          <div class="tb-icon">🎤</div>
+          <div class="tb-text">
+            <strong>Memory Trick (memorize this):</strong><br><br>
+            "<strong>FLP doesn't know URLs — it understands business intents.</strong>"<br><br>
+            That single idea explains why Semantic Objects, Actions, Target Mappings, and Intent-Based Navigation all exist.
+          </div>
+        </div>
+
+        <div class="section-h">Homework — Self-Assessment</div>
+        <div class="quiz-block">
+          <div class="quiz-q">Q1: Why is FLP called a shell instead of an application?</div>
+          <button class="reveal-btn" onclick="reveal(this)">Reveal Answer</button>
+          <div class="quiz-ans"><span class="check">✓</span> It hosts and launches other apps and provides shared services (home, search, notifications, navigation, personalization) but has no business logic of its own — like an OS shell.</div>
+        </div>
+        <div class="quiz-block">
+          <div class="quiz-q">Q2: Explain the complete flow from clicking a tile to opening a SAPUI5 app.</div>
+          <button class="reveal-btn" onclick="reveal(this)">Reveal Answer</button>
+          <div class="quiz-ans"><span class="check">✓</span> Click → FLP generates <code class="k">#Object-Action</code> → Navigation Service parses it → looks up Target Mapping → checks authorization (Role→Catalog) → loads the mapped SAPUI5 app with parameters → app opens.</div>
+        </div>
+        <div class="quiz-block">
+          <div class="quiz-q">Q3: What's the difference between a Catalog and a Group?</div>
+          <button class="reveal-btn" onclick="reveal(this)">Reveal Answer</button>
+          <div class="quiz-ans"><span class="check">✓</span> Catalog = authorization ("can I use it?"). Group = visibility ("can I see it on my home page?").</div>
+        </div>
+        <div class="quiz-block">
+          <div class="quiz-q">Q4: Why does a Dynamic Tile use the <code class="k">$count</code> OData query option?</div>
+          <button class="reveal-btn" onclick="reveal(this)">Reveal Answer</button>
+          <div class="quiz-ans"><span class="check">✓</span> It returns a plain scalar number (e.g. <code class="k">47</code>), not a JSON object — exactly the lightweight format a Dynamic Tile needs to poll and display a live count.</div>
+        </div>
+        <div class="quiz-block">
+          <div class="quiz-q">Q5: Draw the complete configuration flow.</div>
+          <button class="reveal-btn" onclick="reveal(this)">Reveal Answer</button>
+          <div class="quiz-ans"><span class="check">✓</span> <code class="k">Target Mapping → Tile → Catalog → Role → User → Group → FLP Home Page</code>.</div>
+        </div>
+
+        <div class="ok-box">
+          <div class="ok-icon">🏁</div>
+          <div class="ok-text">If you can answer all five confidently, you've mastered one of the core SAP Fiori Launchpad topics. Well done — that's Day 3 complete.</div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+  const TOTAL = 10;
+  const titles = [
+    '', 'Overview & Objectives', 'Part 1 – What is FLP?',
+    'Part 2 – Tile Types', 'Part 3 – Intent Navigation',
+    'Part 4 – Target Mapping', 'Part 5 – Catalog · Role · Group',
+    'Part 6 – Semantic Object', 'Part 7 – Complete Tile Config',
+    'Priority Deep Dive', 'Exam · Interview · Homework'
+  ];
+  let current = 1;
+
+  function showUnit(n, btn) {
+    document.querySelectorAll('.unit').forEach(u => u.classList.remove('active'));
+    document.querySelectorAll('.rail-item').forEach(i => i.classList.remove('active'));
+    document.getElementById('unit-' + n).classList.add('active');
+    if (btn) { btn.classList.add('active'); }
+    else { document.querySelectorAll('.rail-item')[n - 1].classList.add('active'); }
+    current = n;
+    document.getElementById('topTitle').textContent = titles[n];
+    document.getElementById('prog').style.width = Math.round((n / TOTAL) * 100) + '%';
+    document.querySelector('.content').scrollTop = 0;
+  }
+  function nextUnit() { showUnit(current < TOTAL ? current + 1 : 1); }
+  function prevUnit() { showUnit(current > 1 ? current - 1 : TOTAL); }
+
+  function toggleLayer(el) { el.classList.toggle('open'); }
+
+  function reveal(btn) {
+    const ans = btn.nextElementSibling;
+    ans.classList.toggle('visible');
+    btn.textContent = ans.classList.contains('visible') ? 'Hide Answer' : 'Reveal Answer';
+  }
+
+  function toggleAcc(head) {
+    const wasOpen = head.classList.contains('open');
+    document.querySelectorAll('.acc-head').forEach(h => h.classList.remove('open'));
+    if (!wasOpen) head.classList.add('open');
+  }
+
+  function showDetail(id, node) {
+    const boxes = document.querySelectorAll('.detail-box');
+    const box = document.getElementById(id);
+    const allNodes = node.parentElement.querySelectorAll('.flow-node');
+    if (box.style.display === 'none' || box.style.display === '') {
+      boxes.forEach(b => b.style.display = 'none');
+      allNodes.forEach(n => n.classList.remove('highlight'));
+      box.style.display = 'block';
+      node.classList.add('highlight');
+    } else {
+      box.style.display = 'none';
+      node.classList.remove('highlight');
+    }
+  }
+
+  /* ── Unit 2: analogy toggle ── */
+  function showAnalogy(which) {
+    const win = document.getElementById('ana-win'), droid = document.getElementById('ana-droid');
+    const wb = document.getElementById('anaWinBtn'), db = document.getElementById('anaDroidBtn');
+    if (which === 'win') {
+      win.style.display = 'block'; droid.style.display = 'none';
+      wb.classList.remove('ghost'); db.classList.add('ghost');
+    } else {
+      win.style.display = 'none'; droid.style.display = 'block';
+      db.classList.remove('ghost'); wb.classList.add('ghost');
+    }
+  }
+
+  /* ── Unit 3: tile playground ── */
+  const dynCounts = [47, 52, 18, 33, 9, 61];
+  let dynIdx = 0;
+  function refreshDynamic() {
+    dynIdx = (dynIdx + 1) % dynCounts.length;
+    const el = document.getElementById('dynCount');
+    el.textContent = dynCounts[dynIdx];
+    el.classList.remove('count-flash'); void el.offsetWidth; el.classList.add('count-flash');
+    log('🔄 Dynamic tile re-called $count → now shows ' + dynCounts[dynIdx] + ' pending.');
+  }
+  const newsItems = ['Holiday Tomorrow', 'SAP Release Available', 'Security Patch Released', 'Townhall at 4 PM'];
+  let newsIdx = 0;
+  function cycleNews() {
+    newsIdx = (newsIdx + 1) % newsItems.length;
+    document.getElementById('newsLine').textContent = newsItems[newsIdx];
+    log('📰 News feed rotated → "' + newsItems[newsIdx] + '"');
+  }
+  function launchTile(el, type, msg) {
+    el.classList.remove('launch'); void el.offsetWidth; el.classList.add('launch');
+    log('🚀 [' + type + ' Tile] ' + msg);
+  }
+  function log(msg) { document.getElementById('tileLog').textContent = msg; }
+
+  /* ── Unit 4: intent builder ── */
+  let curObj = 'LeaveRequest', curAct = 'create';
+  const readings = {
+    LeaveRequest: 'LeaveRequest', Employee: 'Employee', SalesOrder: 'SalesOrder', Product: 'Product'
+  };
+  function pickObj(chip, val) {
+    document.querySelectorAll('.chip-row')[0].querySelectorAll('.chip').forEach(c => c.classList.remove('sel-obj'));
+    chip.classList.add('sel-obj');
+    curObj = val; document.getElementById('ib-obj').textContent = val; updateReading();
+  }
+  function pickAct(chip, val) {
+    document.querySelectorAll('.chip-row')[1].querySelectorAll('.chip').forEach(c => c.classList.remove('sel-act'));
+    chip.classList.add('sel-act');
+    curAct = val; document.getElementById('ib-act').textContent = val; updateReading();
+  }
+  function updateReading() {
+    document.getElementById('intentReading').innerHTML =
+      'Reading: Open → <b>' + curObj + '</b> → in <b>' + curAct + '</b> mode';
+  }
+
+  /* ── Unit 8: stepper ── */
+  function toggleStep(el) {
+    const wasOpen = el.classList.contains('open');
+    document.querySelectorAll('.step-item').forEach(s => s.classList.remove('open'));
+    if (!wasOpen) el.classList.add('open');
+  }
+
+  /* ── Unit 9: priority resolver ── */
+  function resolvePriority() {
+    const rows = [
+      { row: 'row-a', pri: 'pri-a', ver: 'ver-a' },
+      { row: 'row-b', pri: 'pri-b', ver: 'ver-b' },
+      { row: 'row-c', pri: 'pri-c', ver: 'ver-c' }
+    ];
+    const vals = rows.map(r => {
+      const slider = document.getElementById(r.row).querySelector('.pri-slider');
+      const v = parseInt(slider.value, 10);
+      document.getElementById(r.pri).textContent = v;
+      return { ...r, v };
+    });
+    const max = Math.max(...vals.map(x => x.v));
+    const winners = vals.filter(x => x.v === max);
+    vals.forEach(x => {
+      const rowEl = document.getElementById(x.row);
+      const verEl = document.getElementById(x.ver);
+      rowEl.classList.remove('winner', 'loser', 'tie');
+      if (x.v === max && winners.length === 1) { rowEl.classList.add('winner'); verEl.textContent = '✅ Selected'; }
+      else if (x.v === max && winners.length > 1) { rowEl.classList.add('tie'); verEl.textContent = '⚠️ Tie'; }
+      else { rowEl.classList.add('loser'); verEl.textContent = 'Ignored'; }
+    });
+    const out = document.getElementById('resolveOut');
+    const names = { 'row-a': 'Custom Leave App', 'row-b': 'SAP Standard Leave App', 'row-c': 'Legacy Fallback App' };
+    if (winners.length === 1) {
+      out.style.background = '#e8f5ee'; out.style.color = '#107e3e';
+      out.innerHTML = '✅ FLP launches <b>' + names[winners[0].row] + '</b> (priority ' + max + ' — highest).';
+    } else {
+      out.style.background = '#fff3e0'; out.style.color = '#8f4a00';
+      out.innerHTML = '⚠️ ' + winners.length + ' apps tie at priority ' + max +
+        ' — FLP cannot decide by priority. It may show an app-selection dialog or resolve non-deterministically. Give them distinct priorities!';
+    }
+  }
+  resolvePriority();
+</script>
+
+</body>
+</html>
