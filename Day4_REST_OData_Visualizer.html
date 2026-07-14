@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 4 — REST & OData Services | Animated Visualizer</title>
+<style>
+:root{
+  --sap-blue:#0070f2;--sap-dark:#003169;--sap-green:#107e3e;
+  --sap-orange:#e9730c;--sap-red:#bb0000;--sap-purple:#6a2c8c;
+  --bg:#f5f7fa;--line:#e0e6ef;--ink:#1d2d44;--ink-dim:#5a6a7e;
+  --accent-soft:rgba(0,112,242,.08);
+}
+*,*::before,*::after{box-sizing:border-box;}
+html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);}
+.app{display:grid;grid-template-columns:272px 1fr;height:100vh;overflow:hidden;}
+.rail{background:var(--sap-dark);display:flex;flex-direction:column;overflow:hidden;}
+.rail-head{padding:22px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1);}
+.rail-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;margin-bottom:10px;text-transform:uppercase;}
+.rail-head h1{margin:0;font-size:15px;font-weight:700;color:#fff;line-height:1.35;}
+.rail-head p{margin:5px 0 0;font-size:11px;color:rgba(255,255,255,.45);}
+.rail-list{flex:1;overflow-y:auto;padding:10px 8px;}
+.rail-list::-webkit-scrollbar{width:4px;}
+.rail-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);}
+.rail-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;font-size:12.5px;color:rgba(255,255,255,.5);cursor:pointer;margin-bottom:2px;border-left:3px solid transparent;transition:all .18s;user-select:none;}
+.rail-item .num{font-size:10px;font-weight:700;color:rgba(255,255,255,.25);min-width:18px;}
+.rail-item .lbl{flex:1;line-height:1.3;}
+.rail-item .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.12);flex-shrink:0;}
+.rail-item:hover{background:rgba(255,255,255,.07);color:#fff;}
+.rail-item.active{background:rgba(0,112,242,.28);color:#fff;border-left-color:var(--sap-blue);}
+.rail-item.active .num{color:#5bbbff;}
+.rail-item.active .dot{background:#5bbbff;}
+.rail-footer{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:10.5px;color:rgba(255,255,255,.3);}
+.rail-footer span{color:rgba(255,255,255,.6);font-weight:600;}
+.main{display:flex;flex-direction:column;overflow:hidden;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:54px;background:#fff;border-bottom:1px solid var(--line);flex-shrink:0;}
+.topbar .breadcrumb{font-size:12px;color:var(--ink-dim);}
+.topbar .breadcrumb strong{color:var(--ink);font-weight:600;}
+.topbar .pill{font-size:11px;padding:4px 14px;border-radius:20px;background:#e8f4fd;color:var(--sap-blue);font-weight:600;cursor:pointer;border:1px solid #c2dff7;transition:all .18s;}
+.topbar .pill:hover{background:var(--sap-blue);color:#fff;}
+.prog-bar{height:3px;background:var(--line);flex-shrink:0;}
+.prog-fill{height:100%;background:var(--sap-blue);transition:width .4s ease;}
+.content{flex:1;overflow-y:auto;padding:26px 32px 60px;}
+.content::-webkit-scrollbar{width:6px;}
+.content::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+.unit{display:none;}
+.unit.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.unit-tag{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--sap-blue);margin-bottom:8px;}
+.unit-title{font-size:22px;font-weight:700;color:var(--ink);margin:0 0 6px;}
+.unit-sub{font-size:13.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 20px;}
+.sec{font-size:14.5px;font-weight:700;color:var(--sap-dark);margin:22px 0 10px;display:flex;align-items:center;gap:8px;}
+.sec::before{content:'';display:inline-block;width:4px;height:16px;background:var(--sap-blue);border-radius:2px;}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:12px 0;}
+.card{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:15px;transition:all .18s;}
+.card:hover{border-color:var(--sap-blue);box-shadow:0 2px 12px rgba(0,112,242,.1);transform:translateY(-1px);}
+.card .ci{font-size:22px;margin-bottom:8px;}
+.card .ct{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.card .cb{font-size:12px;color:var(--ink-dim);line-height:1.55;}
+.info{display:flex;gap:12px;padding:13px 16px;border-radius:10px;margin:12px 0;}
+.info.tip{background:#fff8e6;border:1.5px solid #f5c842;}
+.info.note{background:#e8f4fd;border:1.5px solid #c2dff7;}
+.info.green{background:#e8f5ee;border:1.5px solid #b5dcc5;}
+.info .ii{font-size:18px;flex-shrink:0;}
+.info .it{font-size:12.5px;line-height:1.65;}
+.info.tip .it{color:#6b4f00;}
+.info.note .it{color:#002060;}
+.info.green .it{color:#0a3018;}
+.tbl{width:100%;border-collapse:collapse;margin:12px 0;font-size:12.5px;}
+.tbl th{background:var(--sap-dark);color:#fff;padding:9px 13px;text-align:left;font-size:11px;font-weight:700;}
+.tbl th:first-child{border-radius:7px 0 0 0;}.tbl th:last-child{border-radius:0 7px 0 0;}
+.tbl td{padding:9px 13px;border-bottom:1px solid var(--line);vertical-align:top;}
+.tbl tr:hover td{background:var(--accent-soft);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.quiz{background:#f0f7ff;border:1.5px solid #c2dff7;border-radius:10px;padding:15px 18px;margin:12px 0;}
+.quiz-q{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:10px;}
+.rev-btn{background:var(--sap-blue);color:#fff;border:none;padding:7px 16px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s;}
+.rev-btn:hover{background:var(--sap-dark);}
+.quiz-a{display:none;margin-top:11px;font-size:13px;color:var(--ink);line-height:1.65;padding-top:10px;border-top:1px solid #c2dff7;}
+.quiz-a.on{display:block;}
+.quiz-a code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.chk{color:var(--sap-green);font-weight:700;}
+.tip-box{display:flex;gap:12px;padding:16px 18px;background:linear-gradient(135deg,#003169,#0050b3);border-radius:12px;margin:18px 0;color:#fff;}
+.tb-icon{font-size:22px;flex-shrink:0;}
+.tb-text{font-size:13px;line-height:1.7;}
+.tb-text strong{color:#ffde6a;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0;}
+code{font-family:'JetBrains Mono',Consolas,monospace;}
+
+/* ════════════════ ANIMATIONS ════════════════ */
+.svg-wrap{background:#0d1a2e;border-radius:14px;padding:20px;margin:16px 0;overflow:hidden;border:1.5px solid #1e3050;}
+.svg-wrap svg{display:block;margin:0 auto;}
+.anim-btn{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.2);padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;margin-bottom:12px;}
+.anim-btn:hover{background:rgba(0,112,242,.4);border-color:#0070f2;}
+.anim-btn.go{background:#0070f2;border-color:#0070f2;}
+.node-label{font-size:11px;font-weight:700;fill:#fff;}
+.node-sub{font-size:9px;fill:rgba(255,255,255,.55);}
+.arrow-label{font-size:9px;fill:#5bbbff;font-weight:600;}
+
+@keyframes flowR{to{stroke-dashoffset:-15;}}
+@keyframes glowPulse{0%,100%{filter:drop-shadow(0 0 0 transparent);}50%{filter:drop-shadow(0 0 10px #0070f2);}}
+@keyframes countUp{from{opacity:0;transform:scale(.8);}to{opacity:1;transform:scale(1);}}
+@keyframes typeChar{from{opacity:0;}to{opacity:1;}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+@keyframes intentSlide{from{transform:translateX(-20px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+
+/* Code/URL display (mono terminal) */
+.url-display{background:#0d1520;border-radius:10px;padding:16px 20px;margin:14px 0;border:1.5px solid #1e3050;font-family:'JetBrains Mono',Consolas,monospace;}
+.url-hash{font-size:15px;font-weight:700;color:#4fd97a;letter-spacing:.3px;word-break:break-all;line-height:1.7;}
+.url-cursor{animation:blink 1s infinite;}
+.url-part{display:inline;transition:all .3s;}
+.url-part.base{color:#5bbbff;}
+.url-part.set{color:#ffd966;}
+.url-part.opt{color:#ffaa44;}
+.url-part.val{color:#4fd97a;}
+
+/* Resolution / request pipeline steps */
+.res-steps{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+.res-step{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);font-size:12px;color:rgba(255,255,255,.72);transition:all .5s ease;}
+.res-step.lit{background:rgba(0,112,242,.2);border-color:#0070f2;color:#fff;}
+.res-step.done{background:rgba(16,126,62,.2);border-color:#4fd97a;color:rgba(255,255,255,.8);}
+.res-step .rs-icon{font-size:16px;flex-shrink:0;}
+.res-step .rs-text{flex:1;}
+.res-step .rs-text strong{color:#5bbbff;}
+.res-step.lit .rs-text strong{color:#a9d8ff;}
+
+/* REST constraint interactive cards (Unit 1) */
+.rest-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:14px 0;}
+.rest-grid-3{grid-template-columns:repeat(3,1fr);}
+@media(max-width:720px){.rest-grid-3{grid-template-columns:1fr;}}
+.rest-card{background:#ffffff;border:1.5px solid var(--line);border-radius:10px;padding:16px 14px;cursor:pointer;transition:all .2s;text-align:center;}
+.rest-card:hover{transform:translateY(-3px);border-color:#0070f2;box-shadow:0 4px 16px rgba(0,112,242,.15);}
+.rest-card.sel{border-color:#107e3e;background:#f0f9f3;box-shadow:0 0 14px rgba(16,126,62,.15);}
+.rest-card .rc-icon{font-size:26px;margin-bottom:6px;}
+.rest-card .rc-name{font-size:13.5px;font-weight:800;color:#000;}
+.rest-card .rc-tag{font-size:8.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--sap-blue);margin-top:3px;}
+.rest-card.core .rc-tag{color:#b8860b;}
+.rest-card .rc-desc{font-size:11px;color:#1a1a1a;line-height:1.55;margin-top:9px;padding-top:9px;border-top:1px solid var(--line);}
+.rest-info{margin-top:12px;background:#ffffff;border-radius:10px;padding:15px 16px;font-size:12.5px;color:#000;line-height:1.7;min-height:64px;transition:all .3s;border:1.5px solid var(--line);}
+.rest-info strong{color:var(--sap-dark);}
+.rest-info em{color:#8a6d00;font-style:normal;font-weight:600;}
+.rest-info .uc{display:block;margin-top:8px;padding-top:8px;border-top:1px dashed #cdd7e3;color:#0a3018;}
+.rest-info code{background:#eef2f7;padding:1px 6px;border-radius:4px;color:#0a5a2e;font-size:11.5px;}
+
+/* Restaurant analogy animation (Unit 1) */
+.analogy-wrap{background:#0d1a2e;border-radius:14px;padding:20px;margin:14px 0;border:1.5px solid #1e3050;}
+
+/* OData query builder (Unit 3) */
+.qb-wrap{background:#0d1a2e;border-radius:14px;padding:20px;margin:14px 0;border:1.5px solid #1e3050;}
+.qb-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+.qb-chip{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.14);color:rgba(255,255,255,.7);font-size:11px;font-weight:600;padding:6px 12px;border-radius:20px;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace;user-select:none;}
+.qb-chip:hover{border-color:#0070f2;color:#fff;}
+.qb-chip.on{background:rgba(0,112,242,.28);border-color:#0070f2;color:#fff;}
+.qb-label{font-size:9.5px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
+.qb-result{background:#0d1520;border-radius:10px;padding:14px 16px;margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#4fd97a;word-break:break-all;line-height:1.7;border:1.5px solid #1e3050;}
+.qb-result .b{color:#5bbbff;}
+.qb-result .o{color:#ffaa44;}
+.qb-sql{margin-top:8px;font-size:11.5px;color:rgba(255,255,255,.62);font-family:'JetBrains Mono',monospace;}
+.qb-sql .kw{color:#ffd966;}
+
+/* Verb tester (Unit 4 - OData methods) */
+.verb-wrap{background:#0d1a2e;border-radius:14px;padding:20px;margin:14px 0;border:1.5px solid #1e3050;}
+.verb-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+.verb-btn{padding:8px 16px;border-radius:8px;border:1.5px solid;font-size:12px;font-weight:700;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace;background:transparent;}
+.verb-btn.get{color:#4fd97a;border-color:#4fd97a;}
+.verb-btn.post{color:#ffaa44;border-color:#ffaa44;}
+.verb-btn.put{color:#5bbbff;border-color:#5bbbff;}
+.verb-btn.del{color:#ff7676;border-color:#ff7676;}
+.verb-btn.on{color:#0d1a2e;}
+.verb-btn.get.on{background:#4fd97a;}
+.verb-btn.post.on{background:#ffaa44;}
+.verb-btn.put.on{background:#5bbbff;}
+.verb-btn.del.on{background:#ff7676;}
+.verb-panel{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.verb-box{background:#0d1520;border-radius:10px;padding:14px;border:1.5px solid #1e3050;min-height:140px;}
+.verb-box-title{font-size:9.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:10px;}
+.verb-line{font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.75);line-height:1.7;word-break:break-all;}
+.verb-line .m{font-weight:700;}
+.verb-line .url{color:#5bbbff;}
+.verb-status{margin-top:10px;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.verb-status.ok{color:#4fd97a;}
+
+/* Registration pipeline (Unit 5) */
+.reg-wrap{background:#0d1a2e;border-radius:14px;padding:24px;margin:14px 0;border:1.5px solid #1e3050;}
+.reg-flow{display:flex;flex-direction:column;align-items:center;gap:0;}
+.reg-node{background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.15);border-radius:10px;padding:12px 22px;text-align:center;color:rgba(255,255,255,.7);transition:all .5s ease;cursor:pointer;min-width:280px;}
+.reg-node .rn-tx{font-size:13px;font-weight:800;font-family:'JetBrains Mono',monospace;color:rgba(255,255,255,.85);}
+.reg-node .rn-desc{font-size:10px;margin-top:3px;}
+.reg-node .rn-actor{font-size:8.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-top:5px;color:rgba(91,187,255,.85);}
+.reg-node.lit{background:rgba(0,112,242,.25);border-color:#0070f2;color:#fff;box-shadow:0 0 20px rgba(0,112,242,.3);}
+.reg-node.lit .rn-tx{color:#fff;}
+.reg-node.lit .rn-actor{color:#5bbbff;}
+.reg-node.done{background:rgba(16,126,62,.2);border-color:#4fd97a;color:rgba(255,255,255,.85);}
+.reg-node.done .rn-tx{color:#4fd97a;}
+.reg-conn{width:2px;height:26px;background:linear-gradient(to bottom,rgba(0,112,242,.3),rgba(0,112,242,.1));transition:background .5s;}
+.reg-conn.lit{background:linear-gradient(to bottom,#0070f2,#4fd97a);box-shadow:0 0 8px rgba(0,112,242,.4);}
+.reg-info{margin-top:14px;background:rgba(255,255,255,.05);border-radius:8px;padding:12px 14px;font-size:12.5px;color:rgba(255,255,255,.7);line-height:1.65;min-height:52px;transition:all .3s;border:1.5px solid rgba(255,255,255,.06);}
+.reg-info strong{color:#5bbbff;}
+.reg-info code{background:rgba(0,0,0,.3);padding:1px 5px;border-radius:3px;color:#4fd97a;}
+
+/* Gateway Client simulator (Unit 6) */
+.gw-wrap{background:#0d1a2e;border-radius:14px;padding:20px;margin:14px 0;border:1.5px solid #1e3050;}
+.gw-screen{background:#0d1520;border-radius:10px;border:1.5px solid #1e3050;overflow:hidden;}
+.gw-bar{background:#003169;padding:7px 12px;display:flex;align-items:center;gap:8px;font-size:11px;color:#fff;font-weight:700;}
+.gw-bar .gw-tx{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.6);}
+.gw-body{padding:14px;}
+.gw-urlbar{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.12);border-radius:7px;padding:6px 10px;margin-bottom:10px;}
+.gw-method{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:800;color:#4fd97a;flex-shrink:0;}
+.gw-url{font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.7);flex:1;word-break:break-all;}
+.gw-tests{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.gw-tbtn{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.14);color:rgba(255,255,255,.7);font-size:11px;font-weight:600;padding:6px 12px;border-radius:7px;cursor:pointer;transition:all .18s;}
+.gw-tbtn:hover{border-color:#0070f2;color:#fff;}
+.gw-tbtn.on{background:rgba(0,112,242,.28);border-color:#0070f2;color:#fff;}
+.gw-resp{background:#080d16;border-radius:8px;padding:12px 14px;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.7;min-height:120px;border:1.5px solid #1e3050;white-space:pre-wrap;color:rgba(255,255,255,.7);overflow-x:auto;}
+.gw-code{display:inline-block;font-weight:800;padding:2px 10px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;margin-bottom:10px;}
+.gw-code.c200{background:rgba(16,126,62,.25);color:#4fd97a;}
+.gw-code.c201{background:rgba(16,126,62,.25);color:#4fd97a;}
+.gw-code.c403{background:rgba(233,115,12,.25);color:#ffaa44;}
+.gw-code.c404{background:rgba(187,0,0,.3);color:#ff7676;}
+.gw-code.c500{background:rgba(187,0,0,.3);color:#ff7676;}
+.j-key{color:#5bbbff;}.j-str{color:#4fd97a;}.j-num{color:#ffaa44;}
+
+/* Metadata reveal (Unit 3) */
+.mono-block{background:#0d1520;border-radius:10px;padding:14px 16px;margin:12px 0;font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.75);line-height:1.75;border:1.5px solid #1e3050;overflow-x:auto;}
+.mono-block .tag{color:#5bbbff;}.mono-block .attr{color:#ffaa44;}.mono-block .cmt{color:rgba(255,255,255,.35);}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- RAIL -->
+<div class="rail">
+  <div class="rail-head">
+    <div class="rail-badge">📅 Day 4</div>
+    <h1>REST &amp; OData Services</h1>
+    <p>Animated · Interactive · Deep-Dive</p>
+  </div>
+  <div class="rail-list">
+    <div class="rail-item active" onclick="go(1,this)"><span class="num">01</span><span class="lbl">REST Principles (Animated)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(2,this)"><span class="num">02</span><span class="lbl">REST Request Lifecycle</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(3,this)"><span class="num">03</span><span class="lbl">OData Building Blocks</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(4,this)"><span class="num">04</span><span class="lbl">Query Builder (Interactive)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(5,this)"><span class="num">05</span><span class="lbl">HTTP Verbs in OData</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(6,this)"><span class="num">06</span><span class="lbl">Service Registration (Animated)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(7,this)"><span class="num">07</span><span class="lbl">Gateway Client (Simulator)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(8,this)"><span class="num">08</span><span class="lbl">End-to-End Tie-Together</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(9,this)"><span class="num">09</span><span class="lbl">Quiz &amp; Review</span><span class="dot"></span></div>
+  </div>
+  <div class="rail-footer"><span>Parul GC · ODD SEM 2026</span> · SAP Training</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="breadcrumb">Day 4 — REST &amp; OData &rsaquo; <strong id="ttl">REST Principles</strong></div>
+    <button class="pill" onclick="nxt()">Next →</button>
+  </div>
+  <div class="prog-bar"><div class="prog-fill" id="prog" style="width:11%"></div></div>
+  <div class="content">
+
+    <!-- ═══ U1: REST Principles ═══ -->
+    <div class="unit active" id="u1">
+      <div class="unit-tag">Unit 01 · Foundation — Animated</div>
+      <h2 class="unit-title">REST Principles</h2>
+      <p class="unit-sub">REST = <strong>Representational State Transfer</strong> — an architectural <em>style</em>, not a protocol or technology. It is defined by 6 constraints. Think of it as the traffic law every web API must obey.</p>
+
+      <div class="sec">The Restaurant Analogy — Watch It Play</div>
+      <div class="analogy-wrap">
+        <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="anim-btn" id="analogy-play" onclick="playAnalogy()">▶ Play the "order food" flow</button>
+          <button class="anim-btn" id="analogy-pause" onclick="pauseAnalogy()" style="display:none;">⏸ Pause</button>
+        </div>
+        <svg viewBox="0 0 640 220" width="100%" style="max-width:640px;">
+          <!-- Customer -->
+          <circle cx="70" cy="80" r="30" fill="rgba(0,112,242,.2)" stroke="#5bbbff" stroke-width="2"/>
+          <text x="70" y="88" text-anchor="middle" style="font-size:26px;">🙋</text>
+          <text x="70" y="130" text-anchor="middle" class="node-label">Client</text>
+          <text x="70" y="145" text-anchor="middle" class="node-sub">(SAPUI5 app)</text>
+
+          <!-- Waiter -->
+          <circle cx="320" cy="80" r="30" fill="rgba(233,115,12,.2)" stroke="#ffaa44" stroke-width="2"/>
+          <text x="320" y="88" text-anchor="middle" style="font-size:26px;">🤵</text>
+          <text x="320" y="130" text-anchor="middle" class="node-label">Waiter / HTTP</text>
+          <text x="320" y="145" text-anchor="middle" class="node-sub">(Uniform Interface)</text>
+
+          <!-- Kitchen -->
+          <rect x="540" y="50" width="80" height="60" rx="10" fill="rgba(16,126,62,.2)" stroke="#4fd97a" stroke-width="2"/>
+          <text x="580" y="88" text-anchor="middle" style="font-size:26px;">👨‍🍳</text>
+          <text x="580" y="130" text-anchor="middle" class="node-label">Server</text>
+          <text x="580" y="145" text-anchor="middle" class="node-sub">(SAP Gateway)</text>
+
+          <!-- Arrows -->
+          <line id="an-a1" x1="102" y1="72" x2="288" y2="72" stroke="#5bbbff" stroke-width="2.5" stroke-dasharray="6 5" opacity=".15" marker-end="url(#anArrow)"/>
+          <text id="an-l1" x="195" y="62" text-anchor="middle" class="arrow-label" opacity="0">GET request + token</text>
+          <line id="an-a2" x1="352" y1="72" x2="536" y2="72" stroke="#4fd97a" stroke-width="2.5" stroke-dasharray="6 5" opacity=".15" marker-end="url(#anArrow2)"/>
+          <text id="an-l2" x="445" y="62" text-anchor="middle" class="arrow-label" opacity="0">reads request only</text>
+          <line id="an-a3" x1="536" y1="96" x2="352" y2="96" stroke="#4fd97a" stroke-width="2.5" stroke-dasharray="6 5" opacity=".15" marker-end="url(#anArrow3)"/>
+          <text id="an-l3" x="445" y="116" text-anchor="middle" class="arrow-label" opacity="0" style="fill:#4fd97a;">200 OK + JSON</text>
+          <line id="an-a4" x1="288" y1="96" x2="102" y2="96" stroke="#5bbbff" stroke-width="2.5" stroke-dasharray="6 5" opacity=".15" marker-end="url(#anArrow4)"/>
+          <text id="an-l4" x="195" y="116" text-anchor="middle" class="arrow-label" opacity="0">renders data</text>
+
+          <defs>
+            <marker id="anArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#5bbbff"/></marker>
+            <marker id="anArrow2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#4fd97a"/></marker>
+            <marker id="anArrow3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#4fd97a"/></marker>
+            <marker id="anArrow4" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#5bbbff"/></marker>
+          </defs>
+        </svg>
+        <div class="rest-info" id="analogy-info">You don't walk into the kitchen — you tell the waiter (HTTP) what you want, using a standard way of asking. Press play to watch the round-trip.</div>
+      </div>
+
+      <div class="sec">The 3 Core Constraints — Click for Real Use Cases</div>
+      <div class="rest-grid rest-grid-3" id="rest-grid">
+        <div class="rest-card core" onclick="restPick('stateless',this)">
+          <div class="rc-icon">🎫</div>
+          <div class="rc-name">Stateless</div>
+          <div class="rc-tag">Core</div>
+          <div class="rc-desc">Every request carries all it needs. The server remembers nothing between calls.</div>
+        </div>
+        <div class="rest-card core" onclick="restPick('uniform',this)">
+          <div class="rc-icon">🔌</div>
+          <div class="rc-name">Uniform Interface</div>
+          <div class="rc-tag">Core</div>
+          <div class="rc-desc">Resources have URLs. You act on them with standard HTTP verbs (GET, POST…).</div>
+        </div>
+        <div class="rest-card core" onclick="restPick('clientserver',this)">
+          <div class="rc-icon">↔️</div>
+          <div class="rc-name">Client-Server</div>
+          <div class="rc-tag">Core</div>
+          <div class="rc-desc">UI and backend are separate and evolve independently — SAPUI5 ↔ Gateway.</div>
+        </div>
+      </div>
+      <div class="rest-info" id="rest-info">👆 Click a constraint above to see a real-world scenario of it in action.</div>
+
+      <p style="font-size:11.5px;color:var(--ink-dim);line-height:1.6;margin:10px 2px 0;">The other three constraints — <strong>Cacheable</strong>, <strong>Layered System</strong>, and <strong>Code on Demand</strong> (optional) — round out the six, but they're secondary for tomorrow. Focus your revision on the three Core ones above.</p>
+
+      <div class="info note">
+        <div class="ii">📌</div>
+        <div class="it"><strong>REST is a set of rules, not a technology.</strong> Every request must be self-contained (stateless) — your auth token goes in <em>every single call</em>. Resources have URLs, and you act on them with standard HTTP verbs. The client (SAPUI5) and server (Gateway) are fully decoupled.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: What does "stateless" mean in REST? Give one example.</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>Stateless</strong> means every request carries all the info the server needs — the server remembers nothing between calls. Example: a SAPUI5 app sends its <code>Authorization: Bearer</code> token on <em>every</em> OData request, not just the first login. This is what lets any server in a cluster handle any request (scalability).</div>
+      </div>
+    </div>
+
+    <!-- ═══ U2: REST Request Lifecycle ═══ -->
+    <div class="unit" id="u2">
+      <div class="unit-tag">Unit 02 · Workflow — Animated</div>
+      <h2 class="unit-title">REST Request Lifecycle</h2>
+      <p class="unit-sub">Watch a REST call travel from client to server and back — reading the <strong>status code first</strong> is how the client decides what to do next.</p>
+
+      <div class="sec">Fire a Request — Watch It Form &amp; Resolve</div>
+      <div class="svg-wrap">
+        <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="anim-btn" onclick="buildReq('GET','/LeaveRequestSet','200')">GET · list (200)</button>
+          <button class="anim-btn" onclick="buildReq('GET',&quot;/LeaveRequestSet('X99')&quot;,'404')">GET · missing (404)</button>
+          <button class="anim-btn" onclick="buildReq('POST','/LeaveRequestSet','403')">POST · no token (403)</button>
+        </div>
+        <div class="url-display">
+          <div style="font-size:9px;color:rgba(255,255,255,.35);margin-bottom:6px;font-family:sans-serif;text-transform:uppercase;letter-spacing:.8px;">HTTP Request Line</div>
+          <div class="url-hash" id="req-text"><span style="color:rgba(255,255,255,.2);">click a button above to fire a request</span></div>
+        </div>
+        <div class="res-steps" id="req-steps" style="display:none;">
+          <div class="res-step" id="qs0"><div class="rs-icon">🧱</div><div class="rs-text"><strong>Client builds request</strong> — Method + URL + Headers + (body)</div></div>
+          <div class="res-step" id="qs1"><div class="rs-icon">🌐</div><div class="rs-text"><strong>Travels over HTTP/S</strong> through any number of layers (client doesn't care)</div></div>
+          <div class="res-step" id="qs2"><div class="rs-icon">📥</div><div class="rs-text"><strong>Server reads ONLY this request</strong> — no memory of previous calls (stateless)</div></div>
+          <div class="res-step" id="qs3"><div class="rs-icon">📤</div><div class="rs-text"><strong>Server responds</strong> — Status Code + Headers + Body (JSON/XML)</div></div>
+          <div class="res-step" id="qs4"><div class="rs-icon">🔢</div><div class="rs-text" id="qs4-text"><strong>Client reads status code FIRST</strong></div></div>
+          <div class="res-step" id="qs5"><div class="rs-icon">🎨</div><div class="rs-text" id="qs5-text"><strong>Client renders</strong> — independent of how server works</div></div>
+        </div>
+      </div>
+
+      <div class="sec">Status Codes — The Client's First Read</div>
+      <table class="tbl">
+        <thead><tr><th>Code</th><th>Meaning</th><th>Client Does</th></tr></thead>
+        <tbody>
+          <tr><td><strong style="color:var(--sap-green)">200</strong></td><td>OK — data returned</td><td>Use the data ✅</td></tr>
+          <tr><td><strong>404</strong></td><td>Not Found</td><td>Resource / URL wrong</td></tr>
+          <tr><td><strong style="color:var(--sap-orange)">403</strong></td><td>Forbidden</td><td>Not authorized / no CSRF token</td></tr>
+          <tr><td><strong style="color:var(--sap-red)">500</strong></td><td>Internal Error</td><td>Server-side (ABAP) bug</td></tr>
+        </tbody>
+      </table>
+
+      <div class="two-col">
+        <div style="background:#fff0f0;border:1.5px solid #ffb3b3;border-radius:10px;padding:16px;">
+          <div style="font-size:13px;font-weight:700;color:#660000;margin-bottom:8px;">❌ Stateful (non-REST)</div>
+          <div style="font-size:12px;color:#660000;line-height:1.75;">Server keeps a session in memory. Only <em>that</em> server knows who you are. Can't freely scale — you're pinned to one machine.</div>
+        </div>
+        <div style="background:#e8f5ee;border:1.5px solid #b5dcc5;border-radius:10px;padding:16px;">
+          <div style="font-size:13px;font-weight:700;color:#0a3018;margin-bottom:8px;">✅ Stateless (REST)</div>
+          <div style="font-size:12px;color:#0a3018;line-height:1.75;">Every call self-contained (token inside). <strong>Any</strong> server handles <strong>any</strong> request. This is why SAP hub deployment &amp; load balancing work.</div>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Why does the client read the status code before the body?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> The status code tells the client <em>whether the body is even usable</em>. A <code>200</code> means "use the data"; a <code>404/403/500</code> means the body is an error, not the resource. Branching on the code first avoids trying to render an error payload as if it were valid data.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U3: OData Building Blocks ═══ -->
+    <div class="unit" id="u3">
+      <div class="unit-tag">Unit 03 · Concept</div>
+      <h2 class="unit-title">OData Building Blocks</h2>
+      <p class="unit-sub">OData = <strong>REST + a standard rulebook for business data</strong>. If REST is general traffic law, OData is the specific highway code for enterprise apps — standardized filtering, sorting, paging, and navigation.</p>
+
+      <div class="sec">Mapped to Database Concepts</div>
+      <table class="tbl">
+        <thead><tr><th>Database</th><th>OData Equivalent</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td>Table</td><td><strong>Entity Type</strong></td><td><code>LeaveRequest</code></td></tr>
+          <tr><td>All rows in table</td><td><strong>Entity Set</strong></td><td><code>LeaveRequestSet</code></td></tr>
+          <tr><td>One specific row</td><td><strong>Entity</strong></td><td><code>LeaveRequestSet('LR001')</code></td></tr>
+          <tr><td>Column / Field</td><td><strong>Property</strong></td><td><code>EmployeeID, Status</code></td></tr>
+          <tr><td>Foreign key / JOIN</td><td><strong>Navigation Property</strong></td><td><code>LeaveRequest → ToEmployee</code></td></tr>
+          <tr><td>Stored procedure</td><td><strong>Function Import</strong></td><td><code>ApproveLeave()</code></td></tr>
+        </tbody>
+      </table>
+
+      <div class="sec">The Blueprint — <code>$metadata</code></div>
+      <p style="font-size:12.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 6px;">Every OData service exposes a metadata document — the contract between client and server. SAPUI5 reads it automatically on startup.</p>
+      <div class="mono-block"><span class="cmt">GET /sap/opu/odata/sap/ZLEAVE_SRV/$metadata → HTTP 200</span>
+&lt;<span class="tag">EntityType</span> <span class="attr">Name</span>="LeaveRequest"&gt;
+  &lt;<span class="tag">Key</span>&gt;&lt;<span class="tag">PropertyRef</span> <span class="attr">Name</span>="LeaveRID"/&gt;&lt;/<span class="tag">Key</span>&gt;
+  &lt;<span class="tag">Property</span> <span class="attr">Name</span>="LeaveRID"    <span class="attr">Type</span>="Edm.String"/&gt;
+  &lt;<span class="tag">Property</span> <span class="attr">Name</span>="EmployeeID"  <span class="attr">Type</span>="Edm.String"/&gt;
+  &lt;<span class="tag">Property</span> <span class="attr">Name</span>="Status"      <span class="attr">Type</span>="Edm.String"/&gt;
+  &lt;<span class="tag">NavigationProperty</span> <span class="attr">Name</span>="ToEmployee" .../&gt;
+&lt;/<span class="tag">EntityType</span>&gt;</div>
+
+      <div class="info green">
+        <div class="ii">🔗</div>
+        <div class="it"><strong>Try a real service:</strong> the public OData V4 playground exposes a live <code>$metadata</code> document at <a href="https://services.odata.org/V4/OData/OData.svc/$metadata" target="_blank" rel="noopener" style="color:#0a5a2e;font-weight:700;">services.odata.org/V4/OData/OData.svc/$metadata</a>. Open it and you'll see the same <code>EntityType</code> / <code>Property</code> / <code>NavigationProperty</code> structure — for <code>Products</code>, <code>Categories</code>, and <code>Suppliers</code>. You'll build queries against it in the next unit.</div>
+      </div>
+
+      <div class="info tip">
+        <div class="ii">🛠️</div>
+        <div class="it"><strong>Always add <code>?$format=json</code></strong> — the default response is XML, which SAPUI5 still handles, but JSON is cleaner and lighter. OData wraps results in <code>d.results</code> for a collection, or just <code>d</code> for a single entity.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: What is the difference between an Entity Type and an Entity Set?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> An <strong>Entity Type</strong> is the <em>structure/blueprint</em> (like a table definition — fields and their types). An <strong>Entity Set</strong> is the <em>collection URL</em> you actually query (like all the rows). Example: <code>LeaveRequest</code> is the type; <code>LeaveRequestSet</code> is the set you hit with GET. One record inside is an <strong>Entity</strong>: <code>LeaveRequestSet('LR001')</code>.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U4: Query Builder ═══ -->
+    <div class="unit" id="u4">
+      <div class="unit-tag">Unit 04 · System Query Options — Interactive</div>
+      <h2 class="unit-title">OData Query Builder</h2>
+      <p class="unit-sub">Toggle the <code>$</code>-system query options and watch the URL — and its equivalent SQL — build in real time. This uses the <strong>real public OData V4 demo service</strong> (<code>services.odata.org</code>) so you can open and run the URL live.</p>
+
+      <div class="qb-wrap">
+        <div class="qb-label">Service Root · Entity Set</div>
+        <div class="qb-row"><span class="qb-chip on" style="cursor:default;pointer-events:none;">services.odata.org/V4/OData/OData.svc/Products</span></div>
+
+        <div class="qb-label" style="margin-top:12px;">Toggle Query Options</div>
+        <div class="qb-row">
+          <span class="qb-chip" id="qc-filter" onclick="qbToggle('filter',this)">$filter=Price lt 10</span>
+          <span class="qb-chip" id="qc-select" onclick="qbToggle('select',this)">$select=Name,Price</span>
+          <span class="qb-chip" id="qc-expand" onclick="qbToggle('expand',this)">$expand=Category</span>
+          <span class="qb-chip" id="qc-orderby" onclick="qbToggle('orderby',this)">$orderby=Price desc</span>
+          <span class="qb-chip" id="qc-top" onclick="qbToggle('top',this)">$top=3</span>
+          <span class="qb-chip" id="qc-skip" onclick="qbToggle('skip',this)">$skip=2</span>
+          <span class="qb-chip" id="qc-count" onclick="qbToggle('count',this)">$count</span>
+        </div>
+
+        <div class="qb-label" style="margin-top:14px;">Resulting OData V4 URL</div>
+        <div class="qb-result" id="qb-url"><span class="b">https://services.odata.org/V4/OData/OData.svc/Products</span></div>
+        <div class="qb-sql" id="qb-sql"><span class="kw">SELECT</span> * <span class="kw">FROM</span> Products</div>
+        <a class="anim-btn" id="qb-run" href="https://services.odata.org/V4/OData/OData.svc/Products" target="_blank" rel="noopener" style="margin-top:12px;text-decoration:none;">▶ Open this URL live in a new tab</a>
+      </div>
+
+      <div class="info note">
+        <div class="ii">📚</div>
+        <div class="it">The <code>Products</code> entity set has fields <code>ID · Name · Description · ReleaseDate · Rating · Price</code> and a <code>Category</code> navigation property. This is OData <strong>V4</strong>, so results come back under <code>value</code> (V2/SAP Gateway uses <code>d.results</code>), and integer keys use no quotes: <code>Products(1)</code>.</div>
+      </div>
+
+      <table class="tbl">
+        <thead><tr><th>Option</th><th>SQL Equivalent</th><th>Example (live service)</th></tr></thead>
+        <tbody>
+          <tr><td><code>$filter</code></td><td>WHERE clause</td><td><code>?$filter=Price lt 10</code></td></tr>
+          <tr><td><code>$select</code></td><td>pick columns</td><td><code>?$select=Name,Price</code></td></tr>
+          <tr><td><code>$expand</code></td><td>JOIN related</td><td><code>?$expand=Category</code></td></tr>
+          <tr><td><code>$orderby</code></td><td>ORDER BY</td><td><code>?$orderby=Price desc</code></td></tr>
+          <tr><td><code>$top</code> / <code>$skip</code></td><td>LIMIT / OFFSET</td><td><code>?$top=3&amp;$skip=2</code></td></tr>
+          <tr><td><code>$count</code></td><td>COUNT(*)</td><td><code>/Products/$count</code></td></tr>
+        </tbody>
+      </table>
+
+      <div class="info tip">
+        <div class="ii">💡</div>
+        <div class="it"><strong>Dynamic tile counts</strong> use <code>$count</code> + <code>$filter</code> together — e.g. <code>/Products/$count?$filter=Price lt 10</code> returns just the number the tile displays, no full record payload needed. On SAP Gateway (OData V2) the same idea is <code>/LeaveRequestSet/$count?$filter=Status eq 'Pending'</code>.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Which query option would you use to show only 10 records, skipping the first 20?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> Combine <code>$top=10</code> (LIMIT) with <code>$skip=20</code> (OFFSET): <code>?$top=10&amp;$skip=20</code>. This is exactly how server-side paging works in a SAPUI5 table — the grid requests one page at a time instead of pulling every row.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U5: HTTP Verbs in OData ═══ -->
+    <div class="unit" id="u5">
+      <div class="unit-tag">Unit 05 · CRUD — Interactive</div>
+      <h2 class="unit-title">HTTP Verbs in OData</h2>
+      <p class="unit-sub">The 5 methods map cleanly to CRUD. Click a verb to see the exact request it produces and the status code you'd expect back.</p>
+
+      <div class="verb-wrap">
+        <div class="verb-row">
+          <button class="verb-btn get on" id="vb-GET" onclick="verbPick('GET',this)">GET</button>
+          <button class="verb-btn post" id="vb-POST" onclick="verbPick('POST',this)">POST</button>
+          <button class="verb-btn put" id="vb-PUT" onclick="verbPick('PUT',this)">PUT</button>
+          <button class="verb-btn del" id="vb-DELETE" onclick="verbPick('DELETE',this)">DELETE</button>
+        </div>
+        <div class="verb-panel">
+          <div class="verb-box">
+            <div class="verb-box-title">Request</div>
+            <div class="verb-line" id="verb-req"></div>
+            <div class="verb-status" id="verb-body" style="margin-top:12px;color:rgba(255,255,255,.55);font-size:11px;"></div>
+          </div>
+          <div class="verb-box">
+            <div class="verb-box-title">What Happens</div>
+            <div class="verb-line" id="verb-explain" style="color:rgba(255,255,255,.72);"></div>
+            <div class="verb-status ok" id="verb-code"></div>
+          </div>
+        </div>
+      </div>
+
+      <table class="tbl">
+        <thead><tr><th>Verb</th><th>CRUD</th><th>Needs CSRF?</th><th>Success Code</th></tr></thead>
+        <tbody>
+          <tr><td><code>GET</code></td><td>Read</td><td>No</td><td>200</td></tr>
+          <tr><td><code>POST</code></td><td>Create</td><td><strong>Yes</strong></td><td>201</td></tr>
+          <tr><td><code>PUT</code></td><td>Update (full)</td><td><strong>Yes</strong></td><td>204</td></tr>
+          <tr><td><code>PATCH</code></td><td>Update (partial)</td><td><strong>Yes</strong></td><td>204</td></tr>
+          <tr><td><code>DELETE</code></td><td>Delete</td><td><strong>Yes</strong></td><td>204</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info tip">
+        <div class="ii">🔐</div>
+        <div class="it"><strong>Anything that changes data (POST/PUT/PATCH/DELETE) needs a CSRF token first.</strong> Fetch it with a header <code>X-CSRF-Token: Fetch</code>, then send it back on the write request. Forgetting this is the classic <code>403 Forbidden</code>.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: What is the difference between PUT and PATCH?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>PUT</strong> replaces the <em>entire</em> record — you must send all fields, or missing ones may be blanked. <strong>PATCH</strong> updates only the fields you send (partial update). Both need a CSRF token and both return <code>204 No Content</code> on success.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U6: Service Registration ═══ -->
+    <div class="unit" id="u6">
+      <div class="unit-tag">Unit 06 · Registration — Animated</div>
+      <h2 class="unit-title">Service Registration</h2>
+      <p class="unit-sub">You've written the code — but the URL doesn't exist yet. Registration is publishing your number in the directory. Three transactions, three distinct purposes. Press play to walk the pipeline.</p>
+
+      <div class="reg-wrap">
+        <div style="margin-bottom:16px;text-align:center;">
+          <button class="anim-btn" onclick="playReg()">▶ Register the service</button>
+        </div>
+        <div class="reg-flow">
+          <div class="reg-node" id="reg0">
+            <div class="rn-tx">SEGW</div>
+            <div class="rn-desc">Service Builder — design Entity Types (MPC) + logic (DPC)</div>
+            <div class="rn-actor">👨‍💻 Developer</div>
+          </div>
+          <div class="reg-conn" id="rc0"></div>
+          <div class="reg-node" id="reg1">
+            <div class="rn-tx">SICF</div>
+            <div class="rn-desc">Activate the URL node — makes the path reachable</div>
+            <div class="rn-actor">🛠️ Basis Admin</div>
+          </div>
+          <div class="reg-conn" id="rc1"></div>
+          <div class="reg-node" id="reg2">
+            <div class="rn-tx">/IWFND/MAINT_SERVICE</div>
+            <div class="rn-desc">Register on Gateway hub (Hub Deployment only)</div>
+            <div class="rn-actor">🛠️ Basis Admin</div>
+          </div>
+          <div class="reg-conn" id="rc2"></div>
+          <div class="reg-node" id="reg3">
+            <div class="rn-tx">✅ /$metadata → 200</div>
+            <div class="rn-desc">Verify in browser or Gateway Client</div>
+            <div class="rn-actor">✔️ Verified</div>
+          </div>
+        </div>
+        <div class="reg-info" id="reg-info">Press play to see each stage light up. Watch who does what — developer vs Basis admin.</div>
+      </div>
+
+      <div class="info note">
+        <div class="ii">🧩</div>
+        <div class="it"><strong>SEGW generates 4 ABAP classes</strong> — <code>MPC</code>, <code>MPC_EXT</code>, <code>DPC</code>, <code>DPC_EXT</code>. You only ever write code in the <code>_EXT</code> (extension) classes; SAP regenerates the base classes. Your <code>GET_ENTITYSET</code> logic lives in the <code>DPC_EXT</code>.</div>
+      </div>
+
+      <div class="two-col">
+        <div style="background:#e8f4fd;border:1.5px solid #c2dff7;border-radius:10px;padding:16px;">
+          <div style="font-size:13px;font-weight:700;color:#002060;margin-bottom:8px;">🏠 Embedded Deployment</div>
+          <div style="font-size:12px;color:#002060;line-height:1.75;">Gateway lives on the same server as the backend. <strong>Skip</strong> <code>/IWFND/MAINT_SERVICE</code>. Just SEGW → SICF.</div>
+        </div>
+        <div style="background:#fff8e6;border:1.5px solid #f5c842;border-radius:10px;padding:16px;">
+          <div style="font-size:13px;font-weight:700;color:#6b4f00;margin-bottom:8px;">🌐 Hub Deployment</div>
+          <div style="font-size:12px;color:#6b4f00;line-height:1.75;">Separate Gateway server. You <strong>must</strong> run <code>/IWFND/MAINT_SERVICE</code> to tell the hub the service exists on backend system X (via RFC).</div>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Which 3 transactions register an OData service — and in what order?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> (1) <strong>SEGW</strong> — build &amp; generate the service. (2) <strong>SICF</strong> — activate the URL node so it responds (without this → <code>404</code>). (3) <strong>/IWFND/MAINT_SERVICE</strong> — register on the Gateway hub (Hub Deployment only; skip for Embedded). Verify by hitting <code>/$metadata</code> — a <code>200</code> means it's live.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U7: Gateway Client Simulator ═══ -->
+    <div class="unit" id="u7">
+      <div class="unit-tag">Unit 07 · Testing — Simulator</div>
+      <h2 class="unit-title">Gateway Client Testing</h2>
+      <p class="unit-sub"><code>/IWFND/GW_CLIENT</code> is SAP's built-in Postman — test any OData URL without a frontend. Click a test below to fire it and read the exact response.</p>
+
+      <div class="gw-wrap">
+        <div class="gw-screen">
+          <div class="gw-bar">📡 SAP Gateway Client <span class="gw-tx">/IWFND/GW_CLIENT</span></div>
+          <div class="gw-body">
+            <div class="gw-urlbar">
+              <span class="gw-method" id="gw-method">GET</span>
+              <span class="gw-url" id="gw-url">/sap/opu/odata/sap/ZLEAVE_SRV/$metadata</span>
+            </div>
+            <div class="gw-tests">
+              <span class="gw-tbtn on" id="gt-meta" onclick="gwTest('meta',this)">1 · Test $metadata</span>
+              <span class="gw-tbtn" id="gt-get" onclick="gwTest('get',this)">2 · GET all</span>
+              <span class="gw-tbtn" id="gt-filter" onclick="gwTest('filter',this)">3 · $filter</span>
+              <span class="gw-tbtn" id="gt-post" onclick="gwTest('post',this)">4 · POST (no token)</span>
+              <span class="gw-tbtn" id="gt-err" onclick="gwTest('err',this)">5 · Bad field (500)</span>
+            </div>
+            <div id="gw-codewrap"></div>
+            <div class="gw-resp" id="gw-resp">Click a test above ↑ then read the response here.</div>
+          </div>
+        </div>
+      </div>
+
+      <table class="tbl">
+        <thead><tr><th>Code</th><th>Meaning</th><th>What To Do</th></tr></thead>
+        <tbody>
+          <tr><td><strong style="color:var(--sap-green)">200 / 201 / 204</strong></td><td>Success</td><td>You're done ✅</td></tr>
+          <tr><td><strong>400</strong></td><td>Bad Request</td><td>Check your JSON body</td></tr>
+          <tr><td><strong style="color:var(--sap-orange)">403</strong></td><td>Forbidden</td><td>Fetch CSRF token first</td></tr>
+          <tr><td><strong>404</strong></td><td>Not Found</td><td>Check SICF activation + URL</td></tr>
+          <tr><td><strong style="color:var(--sap-red)">500</strong></td><td>Internal Error</td><td>Check <code>ST22</code> for the ABAP dump</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info green">
+        <div class="ii">🧪</div>
+        <div class="it"><strong>Always test <code>/$metadata</code> first.</strong> A <code>200</code> confirms the service is registered and reachable. If you get <code>404</code>, it's a SICF activation or wrong service-name problem — not a code bug. Only chase ABAP dumps in <code>ST22</code> after you see a <code>500</code>.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: You run a POST in Gateway Client and get HTTP 403. What's wrong?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> You forgot the <strong>CSRF token</strong>. Write operations (POST/PUT/DELETE) require it. Fix: first send a request with header <code>X-CSRF-Token: Fetch</code> (or click "Fetch CSRF Token"), copy the token from the response header, then paste it into your POST request header and re-execute.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U8: End-to-End Tie-Together ═══ -->
+    <div class="unit" id="u8">
+      <div class="unit-tag">Unit 08 · Synthesis</div>
+      <h2 class="unit-title">How It All Connects</h2>
+      <p class="unit-sub">The four topics stack into one continuous story — from the rules, to the standard, to publishing, to testing, to handing the URL to the frontend.</p>
+
+      <div class="svg-wrap">
+        <svg viewBox="0 0 640 340" width="100%" style="max-width:640px;">
+          <defs>
+            <linearGradient id="stkG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0070f2"/><stop offset="100%" stop-color="#0050b3"/></linearGradient>
+          </defs>
+          <!-- REST -->
+          <rect x="60" y="14" width="520" height="46" rx="9" fill="rgba(0,112,242,.18)" stroke="#5bbbff" stroke-width="1.5"/>
+          <text x="80" y="36" style="font-size:13px;font-weight:800;fill:#fff;">1 · REST Principles</text>
+          <text x="80" y="52" style="font-size:9.5px;fill:rgba(255,255,255,.55);">The rules OData must follow — stateless · uniform interface · client-server</text>
+          <line x1="320" y1="60" x2="320" y2="76" stroke="#5bbbff" stroke-width="2" marker-end="url(#stkArr)"/>
+          <!-- OData -->
+          <rect x="80" y="76" width="500" height="46" rx="9" fill="rgba(16,126,62,.18)" stroke="#4fd97a" stroke-width="1.5"/>
+          <text x="100" y="98" style="font-size:13px;font-weight:800;fill:#fff;">2 · OData Services</text>
+          <text x="100" y="114" style="font-size:9.5px;fill:rgba(255,255,255,.55);">SAP's implementation of REST for business data — $filter, $expand, $metadata</text>
+          <line x1="330" y1="122" x2="330" y2="138" stroke="#4fd97a" stroke-width="2" marker-end="url(#stkArr)"/>
+          <!-- Registration -->
+          <rect x="100" y="138" width="480" height="46" rx="9" fill="rgba(233,115,12,.18)" stroke="#ffaa44" stroke-width="1.5"/>
+          <text x="120" y="160" style="font-size:13px;font-weight:800;fill:#fff;">3 · Service Registration</text>
+          <text x="120" y="176" style="font-size:9.5px;fill:rgba(255,255,255,.55);">Makes the URL reachable — SEGW → SICF → /IWFND/MAINT_SERVICE</text>
+          <line x1="340" y1="184" x2="340" y2="200" stroke="#ffaa44" stroke-width="2" marker-end="url(#stkArr)"/>
+          <!-- Gateway Testing -->
+          <rect x="120" y="200" width="460" height="46" rx="9" fill="rgba(106,44,140,.22)" stroke="#bb80ff" stroke-width="1.5"/>
+          <text x="140" y="222" style="font-size:13px;font-weight:800;fill:#fff;">4 · Gateway Client Testing</text>
+          <text x="140" y="238" style="font-size:9.5px;fill:rgba(255,255,255,.55);">Verifies the registered service returns correct data — /IWFND/GW_CLIENT</text>
+          <line x1="350" y1="246" x2="350" y2="262" stroke="#bb80ff" stroke-width="2" marker-end="url(#stkArr)"/>
+          <!-- Handoff -->
+          <rect x="140" y="262" width="440" height="46" rx="9" fill="url(#stkG)" stroke="#fff" stroke-width="1.5"/>
+          <text x="360" y="290" text-anchor="middle" style="font-size:12.5px;font-weight:800;fill:#fff;">➡️ Hand the URL to the SAPUI5 developer</text>
+          <defs>
+            <marker id="stkArr" markerWidth="9" markerHeight="9" refX="4.5" refY="7" orient="auto"><path d="M0,0 L9,0 L4.5,8 Z" fill="#fff"/></marker>
+          </defs>
+        </svg>
+      </div>
+
+      <div class="tip-box">
+        <div class="tb-icon">🧠</div>
+        <div class="tb-text">
+          The mental model for tomorrow:<br>
+          1. <strong>REST</strong> = the rulebook (stateless, uniform, client-server)<br>
+          2. <strong>OData</strong> = REST specialised for business data (entity sets + $ options)<br>
+          3. <strong>Registration</strong> = SEGW → SICF → /IWFND/MAINT_SERVICE makes the URL live<br>
+          4. <strong>Gateway Client</strong> = test /$metadata → GET → $filter → POST before frontend<br>
+          5. Then → <strong>hand the URL to the SAPUI5 developer</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ U9: Quiz & Review ═══ -->
+    <div class="unit" id="u9">
+      <div class="unit-tag">Unit 09 · Review</div>
+      <h2 class="unit-title">Quick-Fire Revision</h2>
+      <p class="unit-sub">Five questions for tomorrow. Try to answer out loud before revealing.</p>
+
+      <div class="quiz">
+        <div class="quiz-q">Q1: What does stateless mean in REST? Give one example.</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> Every request carries all needed info; the server remembers nothing between calls. Example: the auth token is sent on <code>every</code> OData request, not just at login.</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q2: What is the difference between an Entity Type and an Entity Set?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> Entity Type = the structure/blueprint (like a table definition). Entity Set = the collection URL you query (like all the rows). <code>LeaveRequest</code> (type) → <code>LeaveRequestSet</code> (set).</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q3: Which 3 transactions register an OData service — and in what order?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <code>SEGW</code> (build) → <code>SICF</code> (activate URL) → <code>/IWFND/MAINT_SERVICE</code> (register on hub — Hub Deployment only).</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q4: You run a POST in Gateway Client and get HTTP 403. What's wrong?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> Missing <strong>CSRF token</strong>. Fetch it first (<code>X-CSRF-Token: Fetch</code>), then send it on the POST.</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q5: What OData URL would you hit first to verify a service is registered correctly?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <code>/sap/opu/odata/sap/ZLEAVE_SRV/$metadata</code> — a <code>200</code> with the XML entity definitions confirms it's registered and reachable.</div>
+      </div>
+
+      <div class="tip-box">
+        <div class="tb-icon">🎯</div>
+        <div class="tb-text"><strong>One-line summary:</strong> REST is the rulebook, OData is REST for business data, registration (SEGW→SICF→MAINT_SERVICE) makes the URL live, and Gateway Client proves it returns data before the frontend ever touches it.</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+/* ── Navigation ── */
+const TOTAL=9;
+const titles=['','REST Principles','REST Request Lifecycle','OData Building Blocks','OData Query Builder','HTTP Verbs in OData','Service Registration','Gateway Client Testing','End-to-End Tie-Together','Quiz & Review'];
+let cur=1;
+function go(n,btn){
+  document.querySelectorAll('.unit').forEach(u=>u.classList.remove('active'));
+  document.querySelectorAll('.rail-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('u'+n).classList.add('active');
+  if(btn)btn.classList.add('active');
+  else document.querySelectorAll('.rail-item')[n-1].classList.add('active');
+  cur=n;
+  document.getElementById('ttl').textContent=titles[n];
+  document.getElementById('prog').style.width=Math.round(n/TOTAL*100)+'%';
+  document.querySelector('.content').scrollTop=0;
+}
+function nxt(){const n=cur<TOTAL?cur+1:1;go(n,document.querySelectorAll('.rail-item')[n-1]);}
+function rev(btn){const a=btn.nextElementSibling;a.classList.toggle('on');btn.textContent=a.classList.contains('on')?'Hide Answer':'Reveal Answer';}
+
+/* ── Unit 1: Restaurant analogy animation ── */
+const analogySteps=[
+  {a:'an-a1',l:'an-l1',msg:'<strong>Client → Waiter:</strong> sends a GET request. The auth token rides along in the headers — every single call carries it (stateless).'},
+  {a:'an-a2',l:'an-l2',msg:'<strong>Waiter → Kitchen:</strong> the server reads ONLY this request. It has no memory of your last order.'},
+  {a:'an-a3',l:'an-l3',msg:'<strong>Kitchen → Waiter:</strong> server sends back a status code (200 OK) plus the JSON body.'},
+  {a:'an-a4',l:'an-l4',msg:'<strong>Waiter → Client:</strong> the client renders the data — it never had to know how the kitchen works (client-server decoupling).'}
+];
+let analogyTimer=null, analogyIdx=0, analogyPaused=false, analogyRunning=false;
+
+function resetAnalogy(){
+  clearTimeout(analogyTimer);
+  analogySteps.forEach(s=>{document.getElementById(s.a).setAttribute('opacity','.15');document.getElementById(s.a).style.animation='none';document.getElementById(s.l).setAttribute('opacity','0');});
+}
+function analogyStep(){
+  if(analogyPaused)return;
+  // dim previous
+  if(analogyIdx>0){const p=analogySteps[analogyIdx-1];document.getElementById(p.a).setAttribute('opacity','.15');document.getElementById(p.a).style.animation='none';document.getElementById(p.l).setAttribute('opacity','0');}
+  if(analogyIdx<analogySteps.length){
+    const s=analogySteps[analogyIdx];
+    const line=document.getElementById(s.a);
+    line.setAttribute('opacity','1');line.style.animation='flowR .6s linear infinite';
+    document.getElementById(s.l).setAttribute('opacity','1');
+    document.getElementById('analogy-info').innerHTML=s.msg;
+    analogyIdx++;
+    analogyTimer=setTimeout(analogyStep,1500);
+  } else {
+    document.getElementById('analogy-info').innerHTML='✅ Round-trip complete. That is one full REST request/response cycle — self-contained, over a uniform interface, with client and server fully decoupled.';
+    analogyDone();
+  }
+}
+function analogyDone(){
+  analogyRunning=false;analogyPaused=false;
+  document.getElementById('analogy-play').style.display='';
+  document.getElementById('analogy-play').innerHTML='▶ Replay the "order food" flow';
+  document.getElementById('analogy-pause').style.display='none';
+}
+function playAnalogy(){
+  // If paused, resume instead of restarting
+  if(analogyRunning&&analogyPaused){
+    analogyPaused=false;
+    document.getElementById('analogy-play').style.display='none';
+    document.getElementById('analogy-pause').style.display='';
+    analogyStep();
+    return;
+  }
+  // Fresh start
+  resetAnalogy();
+  analogyIdx=0;analogyPaused=false;analogyRunning=true;
+  document.getElementById('analogy-play').style.display='none';
+  document.getElementById('analogy-pause').style.display='';
+  document.getElementById('analogy-pause').innerHTML='⏸ Pause';
+  analogyStep();
+}
+function pauseAnalogy(){
+  if(!analogyRunning)return;
+  analogyPaused=true;
+  clearTimeout(analogyTimer);
+  document.getElementById('analogy-pause').style.display='none';
+  const playBtn=document.getElementById('analogy-play');
+  playBtn.style.display='';
+  playBtn.innerHTML='▶ Resume';
+}
+
+/* ── Unit 1: REST constraint cards (3 Core, enriched) ── */
+const restInfo={
+  stateless:'<strong>Stateless</strong> — every request carries all the info the server needs; the server keeps no memory between calls. <em>Why it matters: scalability.</em> Any server in a farm can handle any request, so you can add servers freely behind a load balancer.'
+    +'<span class="uc">🌍 <strong>Real use case:</strong> You open the Fiori <em>Leave Request</em> app and scroll a list of 200 requests. Each page fetch (<code>$top / $skip</code>) re-sends your <code>Authorization: Bearer</code> token — not just the first login call. A different SAP app server can answer each page, because none of them need to "remember" you. That is why SAP hub deployments with multiple app servers scale smoothly.</span>',
+  uniform:'<strong>Uniform Interface</strong> — every resource has a URL, and you act on it with the same standard HTTP verbs everywhere. <em>Why it matters: predictability.</em> Any client can talk to any REST server without custom glue code.'
+    +'<span class="uc">🌍 <strong>Real use case:</strong> The same verb set works across every entity — <code>GET /Products</code> reads, <code>POST /Products</code> creates, <code>DELETE /Products(1)</code> removes. A developer who has used one OData service already knows how to use <em>every</em> other one — SuccessFactors, S/4HANA, Ariba — because the interface is identical. No per-app API manual needed.</span>',
+  clientserver:'<strong>Client-Server</strong> — the UI (client) and the data logic (server) are fully separate and evolve independently. <em>Why it matters: independent teams &amp; releases.</em>'
+    +'<span class="uc">🌍 <strong>Real use case:</strong> The SAPUI5 frontend team can redesign the <em>Leave Request</em> screen — new layout, new theme — and ship it without touching a line of ABAP, as long as the OData contract (<code>$metadata</code>) stays the same. Likewise the backend team can rewrite the <code>GET_ENTITYSET</code> logic or move to a faster DB, and the frontend never notices. SAPUI5 ↔ Gateway is exactly this split.</span>'
+};
+function restPick(key,el){
+  document.querySelectorAll('.rest-card').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('rest-info').innerHTML=restInfo[key];
+}
+
+/* ── Unit 2: REST request lifecycle ── */
+let reqTimer=null;
+function buildReq(method,url,code){
+  clearTimeout(reqTimer);
+  const full=method+' '+url+(method==='GET'&&url.indexOf('?')<0?'?$format=json':'');
+  const el=document.getElementById('req-text');
+  el.textContent='';
+  let i=0;
+  function typeNext(){
+    if(i<full.length){
+      el.textContent=full.slice(0,++i);
+      reqTimer=setTimeout(typeNext,26);
+    } else {
+      const rs=document.getElementById('req-steps');
+      rs.style.display='flex';
+      for(let j=0;j<6;j++){const s=document.getElementById('qs'+j);s.classList.remove('lit','done');}
+      // outcome-specific final texts
+      const codeColor=code==='200'?'#4fd97a':(code==='404'?'#ff7676':'#ffaa44');
+      const codeMsg=code==='200'?'<strong>200 OK</strong> — body is valid, use the data'
+                   :code==='404'?'<strong>404 Not Found</strong> — resource/URL wrong'
+                   :'<strong>403 Forbidden</strong> — missing CSRF token on write';
+      const renderMsg=code==='200'?'<strong>Client renders</strong> the returned records into the UI'
+                     :'<strong>Client shows an error</strong> — it does NOT try to render the body as data';
+      document.getElementById('qs4-text').innerHTML='<span style="color:'+codeColor+'">🔢</span> '+codeMsg;
+      document.getElementById('qs5-text').innerHTML=renderMsg;
+      let step=0;
+      function lightStep(){
+        if(step>0){const prev=document.getElementById('qs'+(step-1));prev.classList.remove('lit');prev.classList.add('done');}
+        if(step<6){const c=document.getElementById('qs'+step);c.classList.add('lit');step++;setTimeout(lightStep,650);}
+      }
+      setTimeout(lightStep,300);
+    }
+  }
+  typeNext();
+}
+
+/* ── Unit 4: OData query builder ── */
+const qbState={filter:false,select:false,expand:false,orderby:false,top:false,skip:false,count:false};
+function qbToggle(key,el){
+  qbState[key]=!qbState[key];
+  el.classList.toggle('on');
+  renderQb();
+}
+function renderQb(){
+  const root='https://services.odata.org/V4/OData/OData.svc';
+  let path='/Products';
+  if(qbState.count)path+='/$count';
+  const opts=[];
+  if(qbState.filter)opts.push('$filter=Price lt 10');
+  if(qbState.select)opts.push('$select=Name,Price');
+  if(qbState.expand)opts.push('$expand=Category');
+  if(qbState.orderby)opts.push('$orderby=Price desc');
+  if(qbState.top)opts.push('$top=3');
+  if(qbState.skip)opts.push('$skip=2');
+  const query=opts.length?'?'+opts.join('&'):'';
+  // display (highlighted)
+  document.getElementById('qb-url').innerHTML='<span class="b">'+root+path+'</span>'+(query?'<span class="o">'+query+'</span>':'');
+  // live link (real, clickable)
+  document.getElementById('qb-run').href=root+path+query;
+
+  // SQL equivalent
+  let sel='*';
+  if(qbState.select)sel='Name, Price';
+  if(qbState.count)sel='COUNT(*)';
+  let sql='<span class="kw">SELECT</span> '+sel+' <span class="kw">FROM</span> Products';
+  if(qbState.expand&&!qbState.count)sql+=' <span class="kw">JOIN</span> Categories';
+  if(qbState.filter)sql+=' <span class="kw">WHERE</span> Price &lt; 10';
+  if(qbState.orderby&&!qbState.count)sql+=' <span class="kw">ORDER BY</span> Price DESC';
+  if((qbState.top||qbState.skip)&&!qbState.count)sql+=' <span class="kw">LIMIT</span> '+(qbState.top?'3':'ALL')+(qbState.skip?' OFFSET 2':'');
+  document.getElementById('qb-sql').innerHTML=sql;
+}
+
+/* ── Unit 5: HTTP verb tester ── */
+const verbData={
+  GET:{
+    req:'<span class="m" style="color:#4fd97a">GET</span> <span class="url">/LeaveRequestSet(\'LR001\')</span>',
+    body:'No body · no CSRF token needed',
+    explain:'Reads one record by key. Safe &amp; idempotent — can be cached.',
+    code:'→ 200 OK  ·  { "d": { "LeaveRID":"LR001", ... } }',
+    color:'#4fd97a'
+  },
+  POST:{
+    req:'<span class="m" style="color:#ffaa44">POST</span> <span class="url">/LeaveRequestSet</span>',
+    body:'Body: { "EmployeeID":"E001", "LeaveType":"ANNUAL" }<br>Header: X-CSRF-Token required',
+    explain:'Creates a new record. Needs a CSRF token first, or you get 403.',
+    code:'→ 201 Created',
+    color:'#ffaa44'
+  },
+  PUT:{
+    req:'<span class="m" style="color:#5bbbff">PUT</span> <span class="url">/LeaveRequestSet(\'LR001\')</span>',
+    body:'Body: { ...ALL fields... }<br>Header: X-CSRF-Token required',
+    explain:'Full replace — you must send every field. PATCH would be partial.',
+    code:'→ 204 No Content',
+    color:'#5bbbff'
+  },
+  DELETE:{
+    req:'<span class="m" style="color:#ff7676">DELETE</span> <span class="url">/LeaveRequestSet(\'LR001\')</span>',
+    body:'No body · X-CSRF-Token required',
+    explain:'Removes the record. Also needs the CSRF token (it changes data).',
+    code:'→ 204 No Content',
+    color:'#ff7676'
+  }
+};
+function verbPick(v,el){
+  document.querySelectorAll('.verb-btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  const d=verbData[v];
+  document.getElementById('verb-req').innerHTML=d.req;
+  document.getElementById('verb-body').innerHTML=d.body;
+  document.getElementById('verb-explain').innerHTML=d.explain;
+  const c=document.getElementById('verb-code');
+  c.innerHTML=d.code;c.style.color=d.color;
+}
+
+/* ── Unit 6: Service registration pipeline ── */
+let regDone=false;
+function playReg(){
+  regDone=false; // allow replay
+  for(let i=0;i<4;i++){document.getElementById('reg'+i).classList.remove('lit','done');}
+  for(let i=0;i<3;i++){document.getElementById('rc'+i).classList.remove('lit');}
+  const steps=[
+    {node:'reg0',conn:'rc0',msg:'<strong>SEGW</strong> — the developer defines Entity Types (MPC) and implements <code>GET_ENTITYSET</code> in the DPC_EXT class, then generates &amp; activates the project. 4 ABAP classes are created.'},
+    {node:'reg1',conn:'rc1',msg:'<strong>SICF</strong> — Basis admin activates the URL node <code>/sap/opu/odata/sap/ZLEAVE_SRV</code>. Without this the URL returns <code>404</code>.'},
+    {node:'reg2',conn:'rc2',msg:'<strong>/IWFND/MAINT_SERVICE</strong> — (Hub Deployment only) the service is registered on the Gateway hub and mapped to the backend system over RFC. Embedded deployments skip this.'},
+    {node:'reg3',conn:null,msg:'✅ Verify: hit <code>/$metadata</code> in a browser or Gateway Client. A <code>200</code> with entity definitions means the service is live and reachable.'}
+  ];
+  const info=document.getElementById('reg-info');
+  let s=0;
+  function next(){
+    if(s>0){const p=document.getElementById(steps[s-1].node);p.classList.remove('lit');p.classList.add('done');}
+    if(s<steps.length){
+      const step=steps[s];
+      document.getElementById(step.node).classList.add('lit');
+      if(step.conn)document.getElementById(step.conn).classList.add('lit');
+      info.innerHTML=step.msg;
+      s++;
+      if(s<steps.length)setTimeout(next,1400);
+      else setTimeout(()=>{document.getElementById(steps[s-1].node).classList.remove('lit');document.getElementById(steps[s-1].node).classList.add('done');},900);
+    }
+  }
+  setTimeout(next,300);
+}
+
+/* ── Unit 7: Gateway Client simulator ── */
+const gwTests={
+  meta:{
+    method:'GET',url:'/sap/opu/odata/sap/ZLEAVE_SRV/$metadata',code:'200',cls:'c200',
+    resp:'<span class="j-key">&lt;EntityType Name="LeaveRequest"&gt;</span>\n  <span class="j-key">&lt;Property Name="LeaveRID" Type="Edm.String"/&gt;</span>\n  <span class="j-key">&lt;Property Name="Status"  Type="Edm.String"/&gt;</span>\n<span class="j-key">&lt;/EntityType&gt;</span>\n\n✅ Service is registered &amp; reachable.'
+  },
+  get:{
+    method:'GET',url:'/sap/opu/odata/sap/ZLEAVE_SRV/LeaveRequestSet?$format=json',code:'200',cls:'c200',
+    resp:'{\n  <span class="j-key">"d"</span>: {\n    <span class="j-key">"results"</span>: [\n      { <span class="j-key">"LeaveRID"</span>:<span class="j-str">"LR001"</span>, <span class="j-key">"Status"</span>:<span class="j-str">"Pending"</span> },\n      { <span class="j-key">"LeaveRID"</span>:<span class="j-str">"LR002"</span>, <span class="j-key">"Status"</span>:<span class="j-str">"Approved"</span> }\n    ]\n  }\n}\n\n✅ DPC GET_ENTITYSET works.'
+  },
+  filter:{
+    method:'GET',url:"/sap/opu/odata/sap/ZLEAVE_SRV/LeaveRequestSet?$filter=Status eq 'Pending'&$format=json",code:'200',cls:'c200',
+    resp:'{\n  <span class="j-key">"d"</span>: {\n    <span class="j-key">"results"</span>: [\n      { <span class="j-key">"LeaveRID"</span>:<span class="j-str">"LR001"</span>, <span class="j-key">"Status"</span>:<span class="j-str">"Pending"</span> }\n    ]\n  }\n}\n\n✅ Only Status = Pending returned.'
+  },
+  post:{
+    method:'POST',url:'/sap/opu/odata/sap/ZLEAVE_SRV/LeaveRequestSet',code:'403',cls:'c403',
+    resp:'{\n  <span class="j-key">"error"</span>: {\n    <span class="j-key">"code"</span>: <span class="j-str">"CSRF_TOKEN_ERROR"</span>,\n    <span class="j-key">"message"</span>: <span class="j-str">"Required CSRF token not found"</span>\n  }\n}\n\n⚠️ Fetch CSRF token first, then re-POST.'
+  },
+  err:{
+    method:'GET',url:'/sap/opu/odata/sap/ZLEAVE_SRV/LeaveRequestSet?$filter=Xyz eq 1',code:'500',cls:'c500',
+    resp:'{\n  <span class="j-key">"error"</span>: {\n    <span class="j-key">"message"</span>: { <span class="j-key">"value"</span>: <span class="j-str">"Property \'Xyz\' not found"</span> }\n  }\n}\n\n❌ ABAP error — check ST22 for the dump.'
+  }
+};
+function gwTest(key,el){
+  document.querySelectorAll('.gw-tbtn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  const t=gwTests[key];
+  document.getElementById('gw-method').textContent=t.method;
+  document.getElementById('gw-method').style.color=(t.method==='GET'?'#4fd97a':'#ffaa44');
+  document.getElementById('gw-url').textContent=t.url;
+  document.getElementById('gw-codewrap').innerHTML='<span class="gw-code '+t.cls+'">HTTP '+t.code+'</span>';
+  const resp=document.getElementById('gw-resp');
+  resp.style.animation='none';resp.offsetHeight;resp.style.animation='fadeIn .3s ease';
+  resp.innerHTML=t.resp;
+}
+
+/* ── Init defaults ── */
+verbPick('GET',document.getElementById('vb-GET'));
+gwTest('meta',document.getElementById('gt-meta'));
+</script>
+</body>
+</html>
