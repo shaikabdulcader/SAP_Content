@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 2 — Fiori Architecture | Animated Visualizer</title>
+<style>
+:root{
+  --sap-blue:#0070f2;--sap-dark:#003169;--sap-green:#107e3e;
+  --sap-orange:#e9730c;--sap-red:#bb0000;--sap-purple:#6a2c8c;
+  --bg:#f5f7fa;--line:#e0e6ef;--ink:#1d2d44;--ink-dim:#5a6a7e;
+  --accent-soft:rgba(0,112,242,.08);
+}
+*,*::before,*::after{box-sizing:border-box;}
+html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);}
+.app{display:grid;grid-template-columns:272px 1fr;height:100vh;overflow:hidden;}
+
+/* ── Rail ── */
+.rail{background:var(--sap-dark);display:flex;flex-direction:column;overflow:hidden;}
+.rail-head{padding:22px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1);}
+.rail-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;margin-bottom:10px;text-transform:uppercase;}
+.rail-head h1{margin:0;font-size:15px;font-weight:700;color:#fff;line-height:1.35;}
+.rail-head p{margin:5px 0 0;font-size:11px;color:rgba(255,255,255,.45);}
+.rail-list{flex:1;overflow-y:auto;padding:10px 8px;}
+.rail-list::-webkit-scrollbar{width:4px;}
+.rail-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);}
+.rail-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;font-size:12.5px;color:rgba(255,255,255,.5);cursor:pointer;margin-bottom:2px;border-left:3px solid transparent;transition:all .18s;user-select:none;}
+.rail-item .num{font-size:10px;font-weight:700;color:rgba(255,255,255,.25);min-width:18px;}
+.rail-item .lbl{flex:1;line-height:1.3;}
+.rail-item .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.12);flex-shrink:0;}
+.rail-item:hover{background:rgba(255,255,255,.07);color:#fff;}
+.rail-item.active{background:rgba(0,112,242,.28);color:#fff;border-left-color:var(--sap-blue);}
+.rail-item.active .num{color:#5bbbff;}
+.rail-item.active .dot{background:#5bbbff;}
+.rail-footer{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:10.5px;color:rgba(255,255,255,.3);}
+.rail-footer span{color:rgba(255,255,255,.6);font-weight:600;}
+
+/* ── Main ── */
+.main{display:flex;flex-direction:column;overflow:hidden;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:54px;background:#fff;border-bottom:1px solid var(--line);flex-shrink:0;}
+.topbar .breadcrumb{font-size:12px;color:var(--ink-dim);}
+.topbar .breadcrumb strong{color:var(--ink);font-weight:600;}
+.topbar .pill{font-size:11px;padding:4px 14px;border-radius:20px;background:#e8f4fd;color:var(--sap-blue);font-weight:600;cursor:pointer;border:1px solid #c2dff7;transition:all .18s;}
+.topbar .pill:hover{background:var(--sap-blue);color:#fff;}
+.prog-bar{height:3px;background:var(--line);flex-shrink:0;}
+.prog-fill{height:100%;background:var(--sap-blue);transition:width .4s ease;}
+.content{flex:1;overflow-y:auto;padding:26px 32px 60px;}
+.content::-webkit-scrollbar{width:6px;}
+.content::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+
+/* ── Units ── */
+.unit{display:none;}
+.unit.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.unit-tag{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--sap-blue);margin-bottom:8px;}
+.unit-title{font-size:22px;font-weight:700;color:var(--ink);margin:0 0 6px;}
+.unit-sub{font-size:13.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 20px;}
+.sec{font-size:14.5px;font-weight:700;color:var(--sap-dark);margin:22px 0 10px;display:flex;align-items:center;gap:8px;}
+.sec::before{content:'';display:inline-block;width:4px;height:16px;background:var(--sap-blue);border-radius:2px;}
+
+/* ── Cards ── */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:12px 0;}
+.card{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:15px;transition:all .18s;}
+.card:hover{border-color:var(--sap-blue);box-shadow:0 2px 12px rgba(0,112,242,.1);transform:translateY(-1px);}
+.card .ci{font-size:22px;margin-bottom:8px;}
+.card .ct{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.card .cb{font-size:12px;color:var(--ink-dim);line-height:1.55;}
+
+/* ── Info boxes ── */
+.info{display:flex;gap:12px;padding:13px 16px;border-radius:10px;margin:12px 0;}
+.info.tip{background:#fff8e6;border:1.5px solid #f5c842;}
+.info.note{background:#e8f4fd;border:1.5px solid #c2dff7;}
+.info.green{background:#e8f5ee;border:1.5px solid #b5dcc5;}
+.info .ii{font-size:18px;flex-shrink:0;}
+.info .it{font-size:12.5px;line-height:1.65;}
+.info.tip .it{color:#6b4f00;}
+.info.note .it{color:#002060;}
+.info.green .it{color:#0a3018;}
+
+/* ── Table ── */
+.tbl{width:100%;border-collapse:collapse;margin:12px 0;font-size:12.5px;}
+.tbl th{background:var(--sap-dark);color:#fff;padding:9px 13px;text-align:left;font-size:11px;font-weight:700;}
+.tbl th:first-child{border-radius:7px 0 0 0;}.tbl th:last-child{border-radius:0 7px 0 0;}
+.tbl td{padding:9px 13px;border-bottom:1px solid var(--line);vertical-align:top;}
+.tbl tr:hover td{background:var(--accent-soft);}
+.tbl tr:last-child td{border-bottom:none;}
+
+/* ── Code ── */
+.code{background:#0d1520;color:#c9d8f0;border-radius:8px;padding:14px 18px;font-family:'JetBrains Mono',Consolas,monospace;font-size:12px;line-height:1.75;margin:10px 0;overflow-x:auto;border:1px solid #1e2d42;}
+.cg{color:#4fd97a}.cb2{color:#5bbbff}.cy{color:#ffd966}.co{color:#ffaa44}.cgr{color:#6b7fa3}
+
+/* ── Quiz ── */
+.quiz{background:#f0f7ff;border:1.5px solid #c2dff7;border-radius:10px;padding:15px 18px;margin:12px 0;}
+.quiz-q{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:10px;}
+.rev-btn{background:var(--sap-blue);color:#fff;border:none;padding:7px 16px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s;}
+.rev-btn:hover{background:var(--sap-dark);}
+.quiz-a{display:none;margin-top:11px;font-size:13px;color:var(--ink);line-height:1.65;padding-top:10px;border-top:1px solid #c2dff7;}
+.quiz-a.on{display:block;}
+.chk{color:var(--sap-green);font-weight:700;}
+
+/* ── Tip box ── */
+.tip-box{display:flex;gap:12px;padding:16px 18px;background:linear-gradient(135deg,#003169,#0050b3);border-radius:12px;margin:18px 0;color:#fff;}
+.tb-icon{font-size:22px;flex-shrink:0;}
+.tb-text{font-size:13px;line-height:1.7;}
+.tb-text strong{color:#ffde6a;}
+
+/* ── Two col ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0;}
+
+/* ════════════════════════════════════════════
+   ANIMATION STYLES
+════════════════════════════════════════════ */
+
+/* SVG diagram wrapper */
+.svg-wrap{background:#0d1a2e;border-radius:14px;padding:20px;margin:16px 0;overflow:hidden;position:relative;border:1.5px solid #1e3050;}
+.svg-wrap svg{display:block;margin:0 auto;}
+
+/* Anim control button */
+.anim-btn{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.2);padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;margin-bottom:12px;}
+.anim-btn:hover{background:rgba(0,112,242,.4);border-color:#0070f2;}
+.anim-btn.active{background:#0070f2;border-color:#0070f2;}
+
+/* SVG node labels */
+.node-label{font-size:11px;font-weight:700;fill:#fff;}
+.node-sub{font-size:9px;fill:rgba(255,255,255,.55);}
+.arrow-label{font-size:9px;fill:#5bbbff;font-weight:600;}
+
+/* Flowing dashed line animation */
+@keyframes flowRight{to{stroke-dashoffset:-16;}}
+@keyframes flowLeft{to{stroke-dashoffset:16;}}
+@keyframes nodePulse{0%,100%{opacity:1;}50%{opacity:.7;}}
+@keyframes glowPulse{0%,100%{filter:drop-shadow(0 0 0px transparent);}50%{filter:drop-shadow(0 0 8px #0070f2);}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+@keyframes counterUp{from{opacity:0;}to{opacity:1;}}
+@keyframes spinnerRing{to{stroke-dashoffset:-126;}}
+
+/* Layer stack animation */
+.arch-layer-anim{transition:all .35s ease;}
+.arch-layer-anim.lit{filter:drop-shadow(0 0 10px #0070f2);opacity:1 !important;}
+
+/* Step flow */
+.step-flow{display:flex;flex-direction:column;gap:0;margin:14px 0;}
+.sf-item{display:flex;gap:14px;padding:11px 0;opacity:.35;transition:all .4s ease;}
+.sf-item.active{opacity:1;}
+.sf-item.done{opacity:.65;}
+.sf-num{width:30px;height:30px;border-radius:50%;background:#1e3050;color:#5bbbff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;margin-top:1px;transition:all .3s;}
+.sf-item.active .sf-num{background:#0070f2;color:#fff;box-shadow:0 0 14px rgba(0,112,242,.5);}
+.sf-item.done .sf-num{background:#107e3e;color:#fff;}
+.sf-body .st{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:3px;}
+.sf-body .sd{font-size:12px;color:var(--ink-dim);line-height:1.6;}
+.sf-sep{width:2px;height:100%;background:var(--line);margin-left:14px;}
+
+/* Tab toggle */
+.tab-bar{display:flex;gap:0;margin:14px 0 0;border-radius:10px 10px 0 0;overflow:hidden;border:1.5px solid var(--line);border-bottom:none;}
+.tab-btn{flex:1;padding:10px 16px;background:#fff;font-size:12.5px;font-weight:600;color:var(--ink-dim);cursor:pointer;border:none;border-right:1px solid var(--line);transition:all .18s;}
+.tab-btn:last-child{border-right:none;}
+.tab-btn.active{background:var(--sap-dark);color:#fff;}
+.tab-pane{display:none;border:1.5px solid var(--line);border-radius:0 0 10px 10px;overflow:hidden;}
+.tab-pane.active{display:block;}
+
+/* Bootstrap timeline */
+.boot-timeline{display:flex;flex-direction:column;gap:0;padding:16px;background:#0d1a2e;border-radius:12px;margin:14px 0;}
+.boot-step{display:flex;align-items:center;gap:14px;padding:10px 0;opacity:.3;transition:all .5s ease;border-bottom:1px solid rgba(255,255,255,.05);}
+.boot-step:last-child{border-bottom:none;}
+.boot-step.lit{opacity:1;}
+.boot-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:rgba(255,255,255,.08);}
+.boot-step.lit .boot-icon{background:#0070f2;animation:glowPulse 2s ease infinite;}
+.boot-info .bt{font-size:12.5px;font-weight:700;color:#fff;}
+.boot-info .bs{font-size:11px;color:rgba(255,255,255,.5);}
+.boot-step.lit .boot-info .bt{color:#5bbbff;}
+.boot-bar{flex:1;height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;}
+.boot-fill{height:100%;background:#0070f2;border-radius:3px;width:0;transition:width 1s ease;}
+.boot-step.lit .boot-fill{background:linear-gradient(90deg,#0070f2,#4fd97a);}
+
+/* E2E interactive */
+.e2e-wrap{background:#0d1a2e;border-radius:14px;padding:20px;margin:14px 0;border:1.5px solid #1e3050;}
+.e2e-diagram{display:flex;gap:0;align-items:center;justify-content:center;flex-wrap:wrap;padding:14px 0;gap:4px;}
+.e2e-node{background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px;text-align:center;min-width:80px;transition:all .4s ease;cursor:default;}
+.e2e-node .en-icon{font-size:18px;}
+.e2e-node .en-name{font-size:10px;font-weight:700;color:rgba(255,255,255,.5);margin-top:3px;}
+.e2e-node.lit{border-color:#0070f2;background:rgba(0,112,242,.25);box-shadow:0 0 20px rgba(0,112,242,.35);}
+.e2e-node.lit .en-name{color:#5bbbff;}
+.e2e-node.done{border-color:#107e3e;background:rgba(16,126,62,.2);}
+.e2e-node.done .en-name{color:#4fd97a;}
+.e2e-arrow{font-size:16px;color:rgba(255,255,255,.2);padding:0 2px;transition:color .4s;}
+.e2e-arrow.lit{color:#0070f2;}
+.e2e-detail{background:rgba(255,255,255,.05);border-radius:8px;padding:12px 14px;margin-top:12px;min-height:54px;transition:all .3s;}
+.e2e-detail .ed-step{font-size:10px;font-weight:700;color:#5bbbff;letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px;}
+.e2e-detail .ed-text{font-size:12.5px;color:rgba(255,255,255,.75);line-height:1.6;}
+.e2e-controls{display:flex;align-items:center;gap:10px;margin-top:14px;}
+.e2e-btn{padding:8px 20px;border-radius:8px;border:1.5px solid;font-size:12px;font-weight:700;cursor:pointer;transition:all .18s;}
+.e2e-btn.play{background:#0070f2;color:#fff;border-color:#0070f2;}
+.e2e-btn.play:hover{background:#005ac2;}
+.e2e-btn.reset{background:transparent;color:rgba(255,255,255,.5);border-color:rgba(255,255,255,.2);}
+.e2e-btn.reset:hover{color:#fff;border-color:rgba(255,255,255,.5);}
+.e2e-progress{flex:1;height:4px;background:rgba(255,255,255,.1);border-radius:2px;}
+.e2e-prog-fill{height:100%;background:#0070f2;border-radius:2px;transition:width .5s ease;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- RAIL -->
+<div class="rail">
+  <div class="rail-head">
+    <div class="rail-badge">📅 Day 2</div>
+    <h1>Fiori Architecture</h1>
+    <p>Animated · Interactive · Deep-Dive</p>
+  </div>
+  <div class="rail-list">
+    <div class="rail-item active" onclick="go(1,this)"><span class="num">01</span><span class="lbl">Architecture Overview</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(2,this)"><span class="num">02</span><span class="lbl">Frontend Components</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(3,this)"><span class="num">03</span><span class="lbl">Backend Components</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(4,this)"><span class="num">04</span><span class="lbl">SAP Gateway (Animated)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(5,this)"><span class="num">05</span><span class="lbl">UI5 Runtime (Animated)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(6,this)"><span class="num">06</span><span class="lbl">Frontend vs Backend</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(7,this)"><span class="num">07</span><span class="lbl">SAP BTP Architecture</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(8,this)"><span class="num">08</span><span class="lbl">E2E Flow (Interactive)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(9,this)"><span class="num">09</span><span class="lbl">Quiz & Review</span><span class="dot"></span></div>
+  </div>
+  <div class="rail-footer"><span>Parul GC · ODD SEM 2026</span> · SAP Training</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="breadcrumb">Day 2 — Fiori Architecture &rsaquo; <strong id="ttl">Architecture Overview</strong></div>
+    <button class="pill" onclick="nxt()">Next →</button>
+  </div>
+  <div class="prog-bar"><div class="prog-fill" id="prog" style="width:11%"></div></div>
+  <div class="content">
+
+    <!-- ═══════════════ UNIT 1: Architecture Overview ═══════════════ -->
+    <div class="unit active" id="u1">
+      <div class="unit-tag">Unit 01 · Overview</div>
+      <h2 class="unit-title">Fiori Architecture — Animated Overview</h2>
+      <p class="unit-sub">Click <strong>Send Request</strong> to watch a live OData request travel through all three layers — from the browser all the way to SAP HANA and back.</p>
+
+      <div class="svg-wrap">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.8px;text-transform:uppercase;">3-Layer Architecture — Live Request Simulation</span>
+          <button class="anim-btn" id="arch-play-btn" onclick="playArch()">▶ Send Request</button>
+        </div>
+        <svg id="arch-svg" viewBox="0 0 680 310" width="100%" style="max-width:680px;">
+          <defs>
+            <filter id="glow1"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="glow2"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#0070f2"/></marker>
+            <marker id="arr-g" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#4fd97a"/></marker>
+          </defs>
+
+          <!-- LAYER BOXES -->
+          <!-- Browser -->
+          <rect id="a-browser" x="10" y="20" width="130" height="70" rx="10" fill="#0050b3" stroke="#5bbbff" stroke-width="1.5" opacity=".6"/>
+          <text x="75" y="48" text-anchor="middle" class="node-label">🌐 Browser</text>
+          <text x="75" y="63" text-anchor="middle" class="node-sub">SAPUI5 App</text>
+          <text x="75" y="78" text-anchor="middle" class="node-sub">OData Model</text>
+
+          <!-- FLP Shell -->
+          <rect id="a-flp" x="10" y="110" width="130" height="70" rx="10" fill="#1a2a4a" stroke="#5bbbff" stroke-width="1.5" opacity=".6"/>
+          <text x="75" y="138" text-anchor="middle" class="node-label">🏠 FLP Shell</text>
+          <text x="75" y="153" text-anchor="middle" class="node-sub">Tile Renderer</text>
+          <text x="75" y="168" text-anchor="middle" class="node-sub">Navigation Svc</text>
+
+          <!-- SAP Gateway -->
+          <rect id="a-gw" x="270" y="65" width="140" height="80" rx="10" fill="#003169" stroke="#0070f2" stroke-width="2" opacity=".6"/>
+          <text x="340" y="93" text-anchor="middle" class="node-label">🔗 SAP Gateway</text>
+          <text x="340" y="108" text-anchor="middle" class="node-sub">ICM / ICF</text>
+          <text x="340" y="123" text-anchor="middle" class="node-sub">OData Service</text>
+          <text x="340" y="138" text-anchor="middle" class="node-sub">MPC + DPC</text>
+
+          <!-- ABAP Backend -->
+          <rect id="a-abap" x="270" y="165" width="140" height="70" rx="10" fill="#0a3a1a" stroke="#4fd97a" stroke-width="1.5" opacity=".6"/>
+          <text x="340" y="193" text-anchor="middle" class="node-label">⚙️ ABAP Logic</text>
+          <text x="340" y="208" text-anchor="middle" class="node-sub">BAPIs / RAP</text>
+          <text x="340" y="223" text-anchor="middle" class="node-sub">CDS Views</text>
+
+          <!-- HANA -->
+          <rect id="a-hana" x="530" y="110" width="140" height="80" rx="10" fill="#4a1a00" stroke="#ff6a00" stroke-width="1.5" opacity=".6"/>
+          <text x="600" y="140" text-anchor="middle" class="node-label">🗄️ SAP HANA</text>
+          <text x="600" y="156" text-anchor="middle" class="node-sub">In-Memory DB</text>
+          <text x="600" y="171" text-anchor="middle" class="node-sub">Columnar Store</text>
+
+          <!-- AUTH -->
+          <rect id="a-auth" x="10" y="200" width="130" height="60" rx="10" fill="#2a0a4a" stroke="#bb80ff" stroke-width="1.5" opacity=".6"/>
+          <text x="75" y="226" text-anchor="middle" class="node-label">🔐 Auth / IAS</text>
+          <text x="75" y="241" text-anchor="middle" class="node-sub">XSUAA / PFCG</text>
+
+          <!-- STATIC ARROWS (always visible, faint) -->
+          <line x1="140" y1="55" x2="270" y2="105" stroke="rgba(91,187,255,.2)" stroke-width="1.5" stroke-dasharray="5,4"/>
+          <line x1="140" y1="145" x2="270" y2="105" stroke="rgba(91,187,255,.2)" stroke-width="1.5" stroke-dasharray="5,4"/>
+          <line x1="410" y1="105" x2="530" y2="150" stroke="rgba(79,217,122,.2)" stroke-width="1.5" stroke-dasharray="5,4"/>
+          <line x1="410" y1="200" x2="530" y2="150" stroke="rgba(79,217,122,.2)" stroke-width="1.5" stroke-dasharray="5,4"/>
+
+          <!-- ANIMATED FLOWING LINES (always-on, subtle) -->
+          <!-- Browser → Gateway -->
+          <line x1="140" y1="55" x2="270" y2="105" stroke="#0070f2" stroke-width="1.5" stroke-dasharray="8,6" opacity=".5">
+            <animate attributeName="stroke-dashoffset" from="0" to="-14" dur="1s" repeatCount="indefinite"/>
+          </line>
+          <!-- FLP → Gateway -->
+          <line x1="140" y1="145" x2="270" y2="105" stroke="#5bbbff" stroke-width="1.5" stroke-dasharray="8,6" opacity=".35">
+            <animate attributeName="stroke-dashoffset" from="0" to="-14" dur="1.3s" repeatCount="indefinite"/>
+          </line>
+          <!-- GW → HANA -->
+          <line x1="410" y1="105" x2="530" y2="150" stroke="#0070f2" stroke-width="1.5" stroke-dasharray="8,6" opacity=".4">
+            <animate attributeName="stroke-dashoffset" from="0" to="-14" dur="0.9s" repeatCount="indefinite"/>
+          </line>
+          <!-- ABAP → HANA -->
+          <line x1="410" y1="200" x2="530" y2="150" stroke="#4fd97a" stroke-width="1.5" stroke-dasharray="8,6" opacity=".4">
+            <animate attributeName="stroke-dashoffset" from="0" to="-14" dur="1.1s" repeatCount="indefinite"/>
+          </line>
+
+          <!-- ANIMATED REQUEST PACKET (JS controlled - starts hidden) -->
+          <circle id="pkt1" r="7" fill="#ffde6a" filter="url(#glow1)" opacity="0"/>
+          <circle id="pkt2" r="6" fill="#0070f2" filter="url(#glow1)" opacity="0"/>
+          <circle id="pkt3" r="5" fill="#4fd97a" filter="url(#glow1)" opacity="0"/>
+          <circle id="pkt4" r="5" fill="#ff6a00" filter="url(#glow1)" opacity="0"/>
+
+          <!-- Labels -->
+          <text x="195" y="68" text-anchor="middle" style="font-size:9px;fill:#5bbbff;">HTTPS/OData</text>
+          <text x="195" y="128" text-anchor="middle" style="font-size:9px;fill:#5bbbff;">Navigation</text>
+          <text x="480" y="118" text-anchor="middle" style="font-size:9px;fill:#4fd97a;">Open SQL</text>
+          <text x="480" y="203" text-anchor="middle" style="font-size:9px;fill:#4fd97a;">HANA SQL</text>
+
+          <!-- Status label -->
+          <rect x="160" y="280" width="360" height="22" rx="5" fill="rgba(0,112,242,.15)"/>
+          <text id="arch-status" x="340" y="295" text-anchor="middle" style="font-size:10.5px;fill:#5bbbff;font-weight:600;">→ Click "Send Request" to trace a live OData call</text>
+        </svg>
+      </div>
+
+      <div class="sec">Three-Layer Summary</div>
+      <div class="cards">
+        <div class="card"><div class="ci">🌐</div><div class="ct">Presentation Layer</div><div class="cb">SAPUI5 + FLP Shell. Runs in the browser. Displays UI, captures user input, sends OData HTTP requests.</div></div>
+        <div class="card"><div class="ci">🔗</div><div class="ct">Integration/API Layer</div><div class="cb">SAP Gateway. Receives OData HTTP requests, routes to ABAP business logic via MPC/DPC classes.</div></div>
+        <div class="card"><div class="ci">🗄️</div><div class="ct">Database Layer</div><div class="cb">SAP HANA. In-memory columnar database. All business data lives here — read by ABAP via Open SQL/CDS.</div></div>
+      </div>
+
+      <div class="info note">
+        <div class="ii">📌</div>
+        <div class="it"><strong>Key Principle:</strong> The frontend never touches the database. The backend never renders HTML. Each layer communicates only with its adjacent neighbor through a defined interface (OData on the left boundary, Open SQL on the right).</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ UNIT 2: Frontend ═══════════════ -->
+    <div class="unit" id="u2">
+      <div class="unit-tag">Unit 02 · Frontend</div>
+      <h2 class="unit-title">Frontend Components</h2>
+      <p class="unit-sub">Everything running inside the <strong>browser tab</strong> is the frontend. The three components are SAPUI5 application, Fiori Launchpad shell, and the UI5 Runtime engine.</p>
+      <div class="sec">SAPUI5 App Structure</div>
+      <div class="code">webapp/
+├── <span class="cy">Component.js</span>     <span class="cgr">← Entry point · UIComponent.extend()</span>
+├── <span class="cy">manifest.json</span>    <span class="cgr">← App descriptor · routing · OData service URL</span>
+├── view/
+│   └── <span class="cb2">App.view.xml</span>  <span class="cgr">← Declarative UI using SAPUI5 controls</span>
+├── controller/
+│   └── <span class="cb2">App.controller.js</span> <span class="cgr">← Event handlers · lifecycle hooks</span>
+├── model/
+│   └── <span class="cb2">models.js</span>     <span class="cgr">← JSONModel · ODataModel setup</span>
+└── i18n/
+    └── <span class="cg">i18n.properties</span> <span class="cgr">← Localization text</span></div>
+
+      <div class="sec">FLP Shell Responsibilities</div>
+      <div class="cards">
+        <div class="card"><div class="ci">🔲</div><div class="ct">Tile Home Page</div><div class="cb">Renders grouped tiles based on the user's role catalog. Each tile is a navigation shortcut to a Fiori app.</div></div>
+        <div class="card"><div class="ci">📦</div><div class="ct">App Container</div><div class="cb">Dynamically loads and hosts each Fiori app component inside itself when a tile is clicked.</div></div>
+        <div class="card"><div class="ci">🔀</div><div class="ct">Cross-App Navigation</div><div class="cb">Resolves intent hashes (#SemanticObject-Action) to actual app URLs via the Target Mapping registry.</div></div>
+        <div class="card"><div class="ci">🎨</div><div class="ct">Shell Theming</div><div class="cb">Applies SAP Horizon theme, content density (Cozy/Compact), and RTL/LTR layout globally.</div></div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: What is the purpose of manifest.json in a SAPUI5 application?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>manifest.json</strong> is the declarative app descriptor. It defines: routing configuration (URL patterns → view names), OData service endpoints (models section), content density, supported themes, and app metadata. The framework reads it automatically <em>before</em> Component.js runs — no code needed to configure these. Think of it as the app's "settings file."</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ UNIT 3: Backend ═══════════════ -->
+    <div class="unit" id="u3">
+      <div class="unit-tag">Unit 03 · Backend</div>
+      <h2 class="unit-title">Backend Components</h2>
+      <p class="unit-sub">The backend processes every OData request from the frontend. It contains business rules, data validation, and database access — running entirely on the SAP server.</p>
+      <div class="sec">ABAP Backend Transactions</div>
+      <table class="tbl">
+        <thead><tr><th>Transaction</th><th>Purpose</th><th>Used When</th></tr></thead>
+        <tbody>
+          <tr><td><strong>SEGW</strong></td><td>Gateway Service Builder</td><td>Create OData V2 service · define entities · generate MPC + DPC</td></tr>
+          <tr><td><strong>/IWFND/MAINT_SERVICE</strong></td><td>Activate Services</td><td>Register and activate OData service on the Gateway system</td></tr>
+          <tr><td><strong>/IWFND/GW_CLIENT</strong></td><td>Gateway Test Client</td><td>Test OData GET/POST/PATCH requests (like Postman for Gateway)</td></tr>
+          <tr><td><strong>PFCG</strong></td><td>Role Maintenance</td><td>Assign catalogs to roles · assign roles to users</td></tr>
+          <tr><td><strong>SM59</strong></td><td>RFC Destinations</td><td>Configure Hub → Backend RFC connection</td></tr>
+          <tr><td><strong>SE80 / SE38</strong></td><td>ABAP Workbench</td><td>Write / maintain ABAP code for DPC methods</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info tip">
+        <div class="ii">💡</div>
+        <div class="it"><strong>MPC vs DPC:</strong> SEGW auto-generates both. <strong>MPC (Model Provider Class)</strong> defines the data <em>structure</em> (entity types, properties, associations). <strong>DPC (Data Provider Class)</strong> implements the <em>behavior</em> — the CRUD methods that call your ABAP business logic. You extend MPC_EXT and DPC_EXT (the "ext" sub-classes) — never modify the base-generated classes directly.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Why should you never modify the base MPC/DPC classes generated by SEGW?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> SEGW regenerates the base MPC and DPC classes every time you regenerate the service (e.g., after adding a new entity). Any changes made directly to the base class would be <strong>overwritten</strong>. SAP provides the <strong>_EXT sub-classes</strong> (MPC_EXT, DPC_EXT) specifically for custom code — these are never regenerated, so your code is safe there.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ UNIT 4: SAP Gateway ANIMATED ═══════════════ -->
+    <div class="unit" id="u4">
+      <div class="unit-tag">Unit 04 · Middleware — Animated</div>
+      <h2 class="unit-title">SAP Gateway — Hub vs Embedded</h2>
+      <p class="unit-sub">Watch how data flows differently in <strong>Hub deployment</strong> (separate Gateway server) versus <strong>Embedded deployment</strong> (Gateway on the same S/4HANA server).</p>
+
+      <!-- TAB TOGGLE -->
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('hub')">🏛️ Hub Deployment</button>
+        <button class="tab-btn" onclick="switchTab('embedded')">📦 Embedded Deployment</button>
+      </div>
+
+      <!-- HUB TAB -->
+      <div class="tab-pane active" id="tab-hub">
+        <div class="svg-wrap" style="border-radius:0 0 14px 14px;">
+          <div style="margin-bottom:10px;font-size:11px;color:rgba(255,255,255,.5);">Browser → Gateway Hub (separate server) → Multiple S/4HANA backends via RFC</div>
+          <svg viewBox="0 0 700 260" width="100%" style="max-width:700px;">
+            <defs>
+              <filter id="gH"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
+
+            <!-- BROWSER -->
+            <rect x="8" y="95" width="110" height="70" rx="10" fill="#0050b3" stroke="#5bbbff" stroke-width="2"/>
+            <text x="63" y="122" text-anchor="middle" class="node-label">🌐 Browser</text>
+            <text x="63" y="137" text-anchor="middle" class="node-sub">SAPUI5 App</text>
+            <text x="63" y="152" text-anchor="middle" class="node-sub">OData Request</text>
+
+            <!-- Flowing line: Browser → Hub -->
+            <line x1="118" y1="130" x2="238" y2="130" stroke="#5bbbff" stroke-width="2" stroke-dasharray="10,5">
+              <animate attributeName="stroke-dashoffset" from="0" to="-15" dur="0.7s" repeatCount="indefinite"/>
+            </line>
+            <text x="178" y="122" text-anchor="middle" class="arrow-label">OData HTTPS</text>
+            <!-- Packet -->
+            <circle r="6" fill="#ffde6a" filter="url(#gH)">
+              <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#h-p1"/></animateMotion>
+            </circle>
+            <path id="h-p1" d="M 118,130 L 238,130" fill="none"/>
+
+            <!-- GATEWAY HUB -->
+            <rect x="238" y="75" width="140" height="110" rx="10" fill="#003169" stroke="#0070f2" stroke-width="2.5"/>
+            <text x="308" y="102" text-anchor="middle" class="node-label">SAP Gateway Hub</text>
+            <text x="308" y="117" text-anchor="middle" class="node-sub">ICM / ICF</text>
+            <text x="308" y="132" text-anchor="middle" class="node-sub">OData Handler</text>
+            <text x="308" y="147" text-anchor="middle" class="node-sub">MPC · DPC</text>
+            <text x="308" y="162" text-anchor="middle" class="node-sub">SM59 RFC Destinations</text>
+            <!-- Glow ring -->
+            <circle cx="308" cy="130" r="62" fill="none" stroke="#0070f2" stroke-width="1" opacity=".3">
+              <animate attributeName="opacity" values=".1;.4;.1" dur="2s" repeatCount="indefinite"/>
+            </circle>
+
+            <!-- Hub → Backend 1 (RFC line top) -->
+            <line x1="378" y1="110" x2="498" y2="60" stroke="#4fd97a" stroke-width="2" stroke-dasharray="8,5">
+              <animate attributeName="stroke-dashoffset" from="0" to="-13" dur="0.6s" repeatCount="indefinite"/>
+            </line>
+            <text x="435" y="76" text-anchor="middle" class="arrow-label">RFC</text>
+            <circle r="5" fill="#4fd97a" filter="url(#gH)">
+              <animateMotion dur="1.1s" repeatCount="indefinite"><mpath href="#h-p2"/></animateMotion>
+            </circle>
+            <path id="h-p2" d="M 378,110 L 498,60" fill="none"/>
+
+            <!-- Hub → Backend 2 (RFC middle) -->
+            <line x1="378" y1="130" x2="498" y2="130" stroke="#4fd97a" stroke-width="2" stroke-dasharray="8,5">
+              <animate attributeName="stroke-dashoffset" from="0" to="-13" dur="0.75s" repeatCount="indefinite"/>
+            </line>
+            <text x="435" y="122" text-anchor="middle" class="arrow-label">RFC</text>
+            <circle r="5" fill="#4fd97a" filter="url(#gH)">
+              <animateMotion dur="1.2s" repeatCount="indefinite" begin="0.4s"><mpath href="#h-p3"/></animateMotion>
+            </circle>
+            <path id="h-p3" d="M 378,130 L 498,130" fill="none"/>
+
+            <!-- Hub → Backend 3 (RFC bottom) -->
+            <line x1="378" y1="150" x2="498" y2="200" stroke="#4fd97a" stroke-width="2" stroke-dasharray="8,5">
+              <animate attributeName="stroke-dashoffset" from="0" to="-13" dur="0.9s" repeatCount="indefinite"/>
+            </line>
+            <text x="435" y="186" text-anchor="middle" class="arrow-label">RFC</text>
+            <circle r="5" fill="#4fd97a" filter="url(#gH)">
+              <animateMotion dur="1.3s" repeatCount="indefinite" begin="0.8s"><mpath href="#h-p4"/></animateMotion>
+            </circle>
+            <path id="h-p4" d="M 378,150 L 498,200" fill="none"/>
+
+            <!-- BACKEND BOXES -->
+            <rect x="498" y="20" width="130" height="60" rx="8" fill="#107e3e" stroke="#4fd97a" stroke-width="1.5"/>
+            <text x="563" y="44" text-anchor="middle" class="node-label">S/4HANA #1</text>
+            <text x="563" y="59" text-anchor="middle" class="node-sub">Finance · ECC</text>
+            <text x="563" y="72" text-anchor="middle" class="node-sub">ABAP + HANA</text>
+
+            <rect x="498" y="100" width="130" height="60" rx="8" fill="#107e3e" stroke="#4fd97a" stroke-width="1.5"/>
+            <text x="563" y="124" text-anchor="middle" class="node-label">S/4HANA #2</text>
+            <text x="563" y="139" text-anchor="middle" class="node-sub">Logistics · MM</text>
+            <text x="563" y="152" text-anchor="middle" class="node-sub">ABAP + HANA</text>
+
+            <rect x="498" y="180" width="130" height="60" rx="8" fill="#107e3e" stroke="#4fd97a" stroke-width="1.5"/>
+            <text x="563" y="204" text-anchor="middle" class="node-label">S/4HANA #3</text>
+            <text x="563" y="219" text-anchor="middle" class="node-sub">HR · HCM</text>
+            <text x="563" y="232" text-anchor="middle" class="node-sub">ABAP + HANA</text>
+
+            <!-- Legend -->
+            <text x="350" y="252" text-anchor="middle" style="font-size:10px;fill:rgba(255,255,255,.4);">Hub aggregates multiple backends · Frontend calls ONE endpoint · Hub routes via RFC</text>
+          </svg>
+        </div>
+        <div class="info note" style="margin-top:0;border-radius:0 0 10px 10px;">
+          <div class="ii">🏛️</div>
+          <div class="it"><strong>Hub Deployment:</strong> Used in large landscapes with <strong>multiple SAP backend systems</strong>. The Gateway Hub runs on a separate server. The frontend always calls the Hub — never a backend directly. The Hub routes each OData request to the correct backend via RFC (Remote Function Call). The SM59 transaction defines these RFC connection destinations.</div>
+        </div>
+      </div>
+
+      <!-- EMBEDDED TAB -->
+      <div class="tab-pane" id="tab-embedded">
+        <div class="svg-wrap" style="border-radius:0 0 14px 14px;">
+          <div style="margin-bottom:10px;font-size:11px;color:rgba(255,255,255,.5);">Browser → S/4HANA (Gateway + Business Logic on SAME server) — simpler, fewer hops</div>
+          <svg viewBox="0 0 700 220" width="100%" style="max-width:700px;">
+            <defs>
+              <filter id="gE"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
+
+            <!-- BROWSER -->
+            <rect x="30" y="70" width="120" height="80" rx="10" fill="#0050b3" stroke="#5bbbff" stroke-width="2"/>
+            <text x="90" y="98" text-anchor="middle" class="node-label">🌐 Browser</text>
+            <text x="90" y="113" text-anchor="middle" class="node-sub">SAPUI5 App</text>
+            <text x="90" y="128" text-anchor="middle" class="node-sub">OData Request</text>
+
+            <!-- Flowing line: Browser → S/4HANA -->
+            <line x1="150" y1="110" x2="280" y2="110" stroke="#5bbbff" stroke-width="2.5" stroke-dasharray="10,5">
+              <animate attributeName="stroke-dashoffset" from="0" to="-15" dur="0.8s" repeatCount="indefinite"/>
+            </line>
+            <text x="215" y="100" text-anchor="middle" class="arrow-label">OData HTTPS (port 443/8443)</text>
+            <!-- Packet Request -->
+            <circle r="7" fill="#ffde6a" filter="url(#gE)">
+              <animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#e-p1"/></animateMotion>
+            </circle>
+            <path id="e-p1" d="M 150,110 L 280,110" fill="none"/>
+            <!-- Packet Response (reverse) -->
+            <circle r="5" fill="#4fd97a" filter="url(#gE)">
+              <animateMotion dur="1.6s" repeatCount="indefinite" begin="0.8s"><mpath href="#e-p2"/></animateMotion>
+            </circle>
+            <path id="e-p2" d="M 280,116 L 150,116" fill="none"/>
+
+            <!-- S/4HANA OUTER BOX (contains everything) -->
+            <rect x="280" y="20" width="380" height="180" rx="14" fill="rgba(0,49,105,.5)" stroke="#0070f2" stroke-width="2.5"/>
+            <text x="470" y="44" text-anchor="middle" style="font-size:12px;font-weight:800;fill:#5bbbff;letter-spacing:.5px;">S/4HANA 2023+ (Embedded Deployment)</text>
+
+            <!-- ICM / Gateway sub-box -->
+            <rect x="296" y="56" width="155" height="128" rx="10" fill="#003169" stroke="#5bbbff" stroke-width="1.5"/>
+            <text x="373" y="78" text-anchor="middle" class="node-label">🔗 SAP Gateway</text>
+            <text x="373" y="93" text-anchor="middle" class="node-sub">(Embedded)</text>
+            <text x="373" y="110" text-anchor="middle" class="node-sub">ICM / ICF</text>
+            <text x="373" y="125" text-anchor="middle" class="node-sub">OData V2 / V4</text>
+            <text x="373" y="140" text-anchor="middle" class="node-sub">MPC + DPC</text>
+            <text x="373" y="158" text-anchor="middle" class="node-sub">No RFC needed ✓</text>
+
+            <!-- Internal arrow: Gateway → ABAP -->
+            <line x1="451" y1="120" x2="487" y2="120" stroke="#4fd97a" stroke-width="2" stroke-dasharray="6,4">
+              <animate attributeName="stroke-dashoffset" from="0" to="-10" dur="0.5s" repeatCount="indefinite"/>
+            </line>
+            <circle r="4" fill="#ffd966" filter="url(#gE)">
+              <animateMotion dur="0.8s" repeatCount="indefinite"><mpath href="#e-p3"/></animateMotion>
+            </circle>
+            <path id="e-p3" d="M 451,120 L 487,120" fill="none"/>
+
+            <!-- ABAP Logic sub-box -->
+            <rect x="487" y="56" width="155" height="128" rx="10" fill="#0a3a1a" stroke="#4fd97a" stroke-width="1.5"/>
+            <text x="564" y="78" text-anchor="middle" class="node-label">⚙️ ABAP Logic</text>
+            <text x="564" y="93" text-anchor="middle" class="node-sub">(Same Server)</text>
+            <text x="564" y="110" text-anchor="middle" class="node-sub">CDS Views</text>
+            <text x="564" y="125" text-anchor="middle" class="node-sub">RAP / BAPIs</text>
+            <text x="564" y="140" text-anchor="middle" class="node-sub">Function Modules</text>
+            <text x="564" y="158" text-anchor="middle" class="node-sub">SAP HANA 🗄️</text>
+
+            <text x="470" y="210" text-anchor="middle" style="font-size:10px;fill:rgba(255,255,255,.4);">Single server · No RFC · Simpler setup · Standard for new S/4HANA implementations</text>
+          </svg>
+        </div>
+        <div class="info green" style="margin-top:0;border-radius:0 0 10px 10px;">
+          <div class="ii">📦</div>
+          <div class="it"><strong>Embedded Deployment:</strong> Gateway runs <strong>on the same ABAP server</strong> as the business logic. No RFC connection needed — Gateway calls ABAP logic directly in-process. This is the <strong>standard for S/4HANA</strong> installations. Simpler setup, lower latency, fewer infrastructure components. Frontend still calls one HTTPS endpoint — same as Hub.</div>
+        </div>
+      </div>
+
+      <div class="sec">Gateway Request Processing Pipeline</div>
+      <p style="font-size:13px;color:var(--ink-dim);margin:0 0 12px;">What happens inside Gateway when it receives your OData HTTP request:</p>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 680 80" width="100%" style="max-width:680px;">
+          <defs><filter id="gP"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+
+          <!-- Pipeline boxes -->
+          <rect x="4"   y="15" width="80"  height="50" rx="8" fill="#0050b3" stroke="#5bbbff" stroke-width="1.5"/>
+          <text x="44"  y="36" text-anchor="middle" style="font-size:9px;font-weight:700;fill:#fff;">HTTP</text>
+          <text x="44"  y="50" text-anchor="middle" style="font-size:8px;fill:rgba(255,255,255,.6);">Request</text>
+          <text x="44"  y="62" text-anchor="middle" style="font-size:7px;fill:#5bbbff;">GET /Employees</text>
+
+          <rect x="100" y="15" width="80"  height="50" rx="8" fill="#003169" stroke="#0070f2" stroke-width="1.5"/>
+          <text x="140" y="36" text-anchor="middle" style="font-size:9px;font-weight:700;fill:#fff;">ICM</text>
+          <text x="140" y="50" text-anchor="middle" style="font-size:8px;fill:rgba(255,255,255,.6);">HTTP Server</text>
+          <text x="140" y="62" text-anchor="middle" style="font-size:7px;fill:#5bbbff;">Routes to ICF</text>
+
+          <rect x="196" y="15" width="80"  height="50" rx="8" fill="#003169" stroke="#0070f2" stroke-width="1.5"/>
+          <text x="236" y="36" text-anchor="middle" style="font-size:9px;font-weight:700;fill:#fff;">ICF</text>
+          <text x="236" y="50" text-anchor="middle" style="font-size:8px;fill:rgba(255,255,255,.6);">/sap/opu/</text>
+          <text x="236" y="62" text-anchor="middle" style="font-size:7px;fill:#5bbbff;">odata handler</text>
+
+          <rect x="292" y="15" width="80"  height="50" rx="8" fill="#1a1a60" stroke="#8080ff" stroke-width="1.5"/>
+          <text x="332" y="36" text-anchor="middle" style="font-size:9px;font-weight:700;fill:#fff;">MPC</text>
+          <text x="332" y="50" text-anchor="middle" style="font-size:8px;fill:rgba(255,255,255,.6);">Validates</text>
+          <text x="332" y="62" text-anchor="middle" style="font-size:7px;fill:#aaaaff;">OData URL</text>
+
+          <rect x="388" y="15" width="80"  height="50" rx="8" fill="#1a1a60" stroke="#8080ff" stroke-width="1.5"/>
+          <text x="428" y="36" text-anchor="middle" style="font-size:9px;font-weight:700;fill:#fff;">DPC</text>
+          <text x="428" y="50" text-anchor="middle" style="font-size:8px;fill:rgba(255,255,255,.6);">GET_ENTITY</text>
+          <text x="428" y="62" text-anchor="middle" style="font-size:7px;fill:#aaaaff;">_SET method</text>
+
+          <rect x="484" y="15" width="80"  height="50" rx="8" fill="#0a3a1a" stroke="#4fd97a" stroke-width="1.5"/>
+          <text x="524" y="36" text-anchor="middle" style="font-size:9px;font-weight:700;fill:#fff;">ABAP</text>
+          <text x="524" y="50" text-anchor="middle" style="font-size:8px;fill:rgba(255,255,255,.6);">Business</text>
+          <text x="524" y="62" text-anchor="middle" style="font-size:7px;fill:#4fd97a;">Logic</text>
+
+          <rect x="580" y="15" width="96"  height="50" rx="8" fill="#2a1a00" stroke="#ff6a00" stroke-width="1.5"/>
+          <text x="628" y="36" text-anchor="middle" style="font-size:9px;font-weight:700;fill:#fff;">HANA</text>
+          <text x="628" y="50" text-anchor="middle" style="font-size:8px;fill:rgba(255,255,255,.6);">SQL SELECT</text>
+          <text x="628" y="62" text-anchor="middle" style="font-size:7px;fill:#ff9a44;">JSON back</text>
+
+          <!-- Connecting animated arrows -->
+          <line x1="84"  y1="40" x2="100" y2="40" stroke="#5bbbff" stroke-width="1.5" stroke-dasharray="5,3"><animate attributeName="stroke-dashoffset" from="0" to="-8" dur="0.5s" repeatCount="indefinite"/></line>
+          <line x1="180" y1="40" x2="196" y2="40" stroke="#5bbbff" stroke-width="1.5" stroke-dasharray="5,3"><animate attributeName="stroke-dashoffset" from="0" to="-8" dur="0.5s" repeatCount="indefinite"/></line>
+          <line x1="276" y1="40" x2="292" y2="40" stroke="#8080ff" stroke-width="1.5" stroke-dasharray="5,3"><animate attributeName="stroke-dashoffset" from="0" to="-8" dur="0.5s" repeatCount="indefinite"/></line>
+          <line x1="372" y1="40" x2="388" y2="40" stroke="#8080ff" stroke-width="1.5" stroke-dasharray="5,3"><animate attributeName="stroke-dashoffset" from="0" to="-8" dur="0.5s" repeatCount="indefinite"/></line>
+          <line x1="468" y1="40" x2="484" y2="40" stroke="#4fd97a" stroke-width="1.5" stroke-dasharray="5,3"><animate attributeName="stroke-dashoffset" from="0" to="-8" dur="0.5s" repeatCount="indefinite"/></line>
+          <line x1="564" y1="40" x2="580" y2="40" stroke="#ff6a00" stroke-width="1.5" stroke-dasharray="5,3"><animate attributeName="stroke-dashoffset" from="0" to="-8" dur="0.5s" repeatCount="indefinite"/></line>
+
+          <!-- Single traveling packet across whole pipeline -->
+          <circle r="5" fill="#ffde6a" filter="url(#gP)">
+            <animateMotion dur="3s" repeatCount="indefinite">
+              <mpath href="#pipeline-path"/>
+            </animateMotion>
+          </circle>
+          <path id="pipeline-path" d="M 4,40 L 676,40" fill="none"/>
+        </svg>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: What is the difference between Hub and Embedded Gateway deployment?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>Hub Deployment:</strong> Gateway runs on a <em>separate dedicated server</em>. It connects to multiple backend ABAP systems via RFC (SM59 destinations). Used in large multi-system landscapes. <strong>Embedded Deployment:</strong> Gateway runs on the <em>same server</em> as the ABAP business logic (standard in S/4HANA). No RFC needed — calls happen in-process. Simpler, lower latency, recommended for new S/4HANA implementations.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ UNIT 5: UI5 Runtime ANIMATED ═══════════════ -->
+    <div class="unit" id="u5">
+      <div class="unit-tag">Unit 05 · Runtime — Animated</div>
+      <h2 class="unit-title">SAPUI5 Runtime & Bootstrap</h2>
+      <p class="unit-sub">Watch the SAPUI5 bootstrap sequence animate step-by-step — from the first script tag to a fully rendered app in the browser.</p>
+
+      <div class="sec">Bootstrap Sequence — Click to Start</div>
+      <div style="display:flex;gap:10px;margin-bottom:6px;">
+        <button class="anim-btn" id="boot-btn" onclick="playBoot()">▶ Start Bootstrap</button>
+        <button class="anim-btn" onclick="resetBoot()">↺ Reset</button>
+      </div>
+      <div class="boot-timeline" id="boot-tl">
+        <div class="boot-step" id="bs0">
+          <div class="boot-icon">📄</div>
+          <div class="boot-info"><div class="bt">1. Browser parses index.html</div><div class="bs">Finds &lt;script id="sap-ui-bootstrap" src="sap-ui-core.js"&gt;</div></div>
+          <div class="boot-bar"><div class="boot-fill" id="bf0"></div></div>
+        </div>
+        <div class="boot-step" id="bs1">
+          <div class="boot-icon">⬇️</div>
+          <div class="boot-info"><div class="bt">2. Download sap-ui-core.js</div><div class="bs">The main UI5 runtime bundle (~1.5MB) loaded from CDN or local resources</div></div>
+          <div class="boot-bar"><div class="boot-fill" id="bf1"></div></div>
+        </div>
+        <div class="boot-step" id="bs2">
+          <div class="boot-icon">⚙️</div>
+          <div class="boot-info"><div class="bt">3. Read data-sap-ui-* bootstrap config</div><div class="bs">theme=sap_horizon · libs=sap.m · async=true · compatVersion=edge</div></div>
+          <div class="boot-bar"><div class="boot-fill" id="bf2"></div></div>
+        </div>
+        <div class="boot-step" id="bs3">
+          <div class="boot-icon">🎨</div>
+          <div class="boot-info"><div class="bt">4. Load theme CSS (sap_horizon)</div><div class="bs">Injects theme stylesheet · applies CSS variables for colors/spacing</div></div>
+          <div class="boot-bar"><div class="boot-fill" id="bf3"></div></div>
+        </div>
+        <div class="boot-step" id="bs4">
+          <div class="boot-icon">📦</div>
+          <div class="boot-info"><div class="bt">5. Async library preload (sap.m)</div><div class="bs">Loads sap/m/library.js and dependencies in parallel — non-blocking</div></div>
+          <div class="boot-bar"><div class="boot-fill" id="bf4"></div></div>
+        </div>
+        <div class="boot-step" id="bs5">
+          <div class="boot-icon">🗺️</div>
+          <div class="boot-info"><div class="bt">6. ComponentSupport detects app</div><div class="bs">Reads data-sap-ui-component attribute · loads Component.js</div></div>
+          <div class="boot-bar"><div class="boot-fill" id="bf5"></div></div>
+        </div>
+        <div class="boot-step" id="bs6">
+          <div class="boot-icon">📋</div>
+          <div class="boot-info"><div class="bt">7. Parse manifest.json</div><div class="bs">Reads routing config · OData service URLs · model definitions</div></div>
+          <div class="boot-bar"><div class="boot-fill" id="bf6"></div></div>
+        </div>
+        <div class="boot-step" id="bs7">
+          <div class="boot-icon">🔗</div>
+          <div class="boot-info"><div class="bt">8. Initialize ODataModel V4</div><div class="bs">Creates model · sets service URL · ready to fire OData requests</div></div>
+          <div class="boot-bar"><div class="boot-fill" id="bf7"></div></div>
+        </div>
+        <div class="boot-step" id="bs8">
+          <div class="boot-icon">🎯</div>
+          <div class="boot-info"><div class="bt">9. Root view renders → onInit() called</div><div class="bs">XML view parsed · controls instantiated · controller initialized</div></div>
+          <div class="boot-bar"><div class="boot-fill" id="bf8"></div></div>
+        </div>
+        <div class="boot-step" id="bs9">
+          <div class="boot-icon">✅</div>
+          <div class="boot-info"><div class="bt">10. App ready — OData request fires</div><div class="bs">List binding triggers GET /EntitySet · table renders with data</div></div>
+          <div class="boot-bar"><div class="boot-fill" id="bf9"></div></div>
+        </div>
+      </div>
+
+      <div class="sec">sap.ui.define — Module System</div>
+      <div class="code"><span class="cgr">// Every SAPUI5 controller/formatter/model is a module</span>
+<span class="cb2">sap.ui.define</span>([
+  <span class="cg">"sap/ui/core/mvc/Controller"</span>,   <span class="cgr">// ← dependency 1</span>
+  <span class="cg">"sap/m/MessageBox"</span>,             <span class="cgr">// ← dependency 2</span>
+  <span class="cg">"../model/formatter"</span>             <span class="cgr">// ← custom module</span>
+], <span class="cy">function</span>(Controller, MessageBox, formatter) {
+  <span class="cg">"use strict"</span>;
+
+  <span class="cy">return</span> Controller.<span class="cb2">extend</span>(<span class="cg">"com.myapp.controller.Overview"</span>, {
+    <span class="co">onInit</span>: <span class="cy">function</span>() {
+      <span class="cgr">// Called once when view is first instantiated</span>
+      <span class="cy">this</span>.getRouter().getRoute(<span class="cg">"overview"</span>).attachPatternMatched(<span class="cy">this</span>._onRouteMatched, <span class="cy">this</span>);
+    },
+    <span class="co">_onRouteMatched</span>: <span class="cy">function</span>(oEvent) {
+      <span class="cgr">// Called every time the route pattern matches</span>
+    }
+  });
+});</div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: What does data-sap-ui-async="true" do and why is it required?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <code>data-sap-ui-async="true"</code> enables <strong>asynchronous loading</strong> of SAPUI5 libraries and modules. Without it, every library loads synchronously — blocking the browser's main thread and freezing the UI until all resources download. With async=true, resources load in parallel in the background. It is <strong>mandatory for all new SAPUI5 apps</strong> and is enforced by the UI5 Support Assistant as a critical rule.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ UNIT 6: Frontend vs Backend ═══════════════ -->
+    <div class="unit" id="u6">
+      <div class="unit-tag">Unit 06 · Comparison</div>
+      <h2 class="unit-title">Frontend vs Backend — Side by Side</h2>
+      <p class="unit-sub">The #1 concept exam questions test. Know exactly what belongs where and why.</p>
+      <table class="tbl">
+        <thead><tr><th>Aspect</th><th>Frontend (Browser)</th><th>Backend (ABAP/BTP)</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Language</strong></td><td>JavaScript, XML, JSON</td><td>ABAP, Java/Node.js (CAP)</td></tr>
+          <tr><td><strong>Framework</strong></td><td>SAPUI5 / OpenUI5</td><td>RAP / CAP / ABAP MVC</td></tr>
+          <tr><td><strong>Data access</strong></td><td>Via OData HTTP only</td><td>Direct Open SQL / CDS</td></tr>
+          <tr><td><strong>Business logic</strong></td><td>❌ None (display only)</td><td>✅ All rules here</td></tr>
+          <tr><td><strong>Security</strong></td><td>Not trusted (user can edit JS)</td><td>Authoritative · all checks here</td></tr>
+          <tr><td><strong>Dev tool</strong></td><td>BAS (Business App Studio)</td><td>ADT (Eclipse) / SE80</td></tr>
+          <tr><td><strong>Test frameworks</strong></td><td>QUnit · OPA5</td><td>ABAP Unit · ECATT</td></tr>
+        </tbody>
+      </table>
+      <div class="info tip">
+        <div class="ii">⚠️</div>
+        <div class="it"><strong>Never put business rules in a controller:</strong> A user can open DevTools, override your JS validation, and submit anything. The backend must <em>always</em> re-validate. Frontend validation is for UX only — faster feedback, not security.</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q: A max-15-day leave validation — frontend, backend, or both?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>Backend is mandatory.</strong> Frontend is optional UX enhancement. Anyone can bypass frontend JS with a direct OData POST via Postman or curl. The ABAP DPC/CAP service must validate the 15-day rule and return an OData error response if violated — the frontend then displays that error message to the user.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ UNIT 7: BTP ═══════════════ -->
+    <div class="unit" id="u7">
+      <div class="unit-tag">Unit 07 · Cloud</div>
+      <h2 class="unit-title">SAP BTP Architecture</h2>
+      <p class="unit-sub">In SAP BTP cloud deployments, the architecture adds Approuter, XSUAA, HTML5 App Repository, and CAP on Cloud Foundry. The browser experience looks identical — the wiring beneath is different.</p>
+      <div class="cards">
+        <div class="card"><div class="ci">🚀</div><div class="ct">Approuter</div><div class="cb">The entry point. Handles auth redirects to IAS, injects JWT tokens, routes to HTML5 repo / CAP service.</div></div>
+        <div class="card"><div class="ci">🔐</div><div class="ct">XSUAA</div><div class="cb">OAuth 2.0 server on BTP. Issues JWT tokens. Defines scopes. Replaces PFCG for cloud authorization.</div></div>
+        <div class="card"><div class="ci">🌐</div><div class="ct">HTML5 App Repo</div><div class="cb">Managed static file host for SAPUI5 bundles (JS, XML, CSS). No web server to manage.</div></div>
+        <div class="card"><div class="ci">☕</div><div class="ct">CAP Service</div><div class="cb">Cloud Application Programming model — Node.js or Java OData service replacing Gateway on BTP.</div></div>
+        <div class="card"><div class="ci">📡</div><div class="ct">Cloud Connector</div><div class="cb">Secure tunnel to on-premise systems. No inbound firewall ports needed — outbound only.</div></div>
+        <div class="card"><div class="ci">🗄️</div><div class="ct">HANA Cloud</div><div class="cb">Fully managed cloud HANA instance. CAP services connect to it for persistence.</div></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q: What replaces SAP Gateway in a BTP CAP application?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> In a BTP CAP application, <strong>CAP (Cloud Application Programming Model)</strong> replaces SAP Gateway. CAP automatically exposes your CDS entity definitions as OData V4 services — no SEGW transaction, no MPC/DPC classes. You define entities in .cds files, annotate them with @odata, and CAP generates the full OData service. Authorization is handled by XSUAA (not PFCG).</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ UNIT 8: E2E Interactive ═══════════════ -->
+    <div class="unit" id="u8">
+      <div class="unit-tag">Unit 08 · Integration — Interactive</div>
+      <h2 class="unit-title">End-to-End Flow — Step Through</h2>
+      <p class="unit-sub">Click <strong>Next Step</strong> to walk through a complete leave request fetch — from the user's browser click to the data appearing on screen.</p>
+
+      <div class="e2e-wrap">
+        <!-- Node diagram -->
+        <div class="e2e-diagram">
+          <div class="e2e-node" id="en0"><div class="en-icon">🌐</div><div class="en-name">Browser</div></div>
+          <div class="e2e-arrow" id="ea0">→</div>
+          <div class="e2e-node" id="en1"><div class="en-icon">🔐</div><div class="en-name">IAS/XSUAA</div></div>
+          <div class="e2e-arrow" id="ea1">→</div>
+          <div class="e2e-node" id="en2"><div class="en-icon">🏠</div><div class="en-name">FLP Shell</div></div>
+          <div class="e2e-arrow" id="ea2">→</div>
+          <div class="e2e-node" id="en3"><div class="en-icon">⚛️</div><div class="en-name">UI5 Runtime</div></div>
+          <div class="e2e-arrow" id="ea3">→</div>
+          <div class="e2e-node" id="en4"><div class="en-icon">📡</div><div class="en-name">OData GET</div></div>
+          <div class="e2e-arrow" id="ea4">→</div>
+          <div class="e2e-node" id="en5"><div class="en-icon">🔗</div><div class="en-name">Gateway</div></div>
+          <div class="e2e-arrow" id="ea5">→</div>
+          <div class="e2e-node" id="en6"><div class="en-icon">⚙️</div><div class="en-name">ABAP DPC</div></div>
+          <div class="e2e-arrow" id="ea6">→</div>
+          <div class="e2e-node" id="en7"><div class="en-icon">🗄️</div><div class="en-name">HANA</div></div>
+          <div class="e2e-arrow" id="ea7">→</div>
+          <div class="e2e-node" id="en8"><div class="en-icon">📋</div><div class="en-name">Table Loads</div></div>
+        </div>
+        <!-- Detail panel -->
+        <div class="e2e-detail" id="e2e-detail">
+          <div class="ed-step">READY</div>
+          <div class="ed-text">Click <strong>Next Step</strong> to start the walkthrough. We'll trace a Leave Request list fetch from click to data.</div>
+        </div>
+        <!-- Controls -->
+        <div class="e2e-controls">
+          <button class="e2e-btn play" onclick="e2eNext()">Next Step →</button>
+          <button class="e2e-btn reset" onclick="e2eReset()">↺ Reset</button>
+          <div class="e2e-progress"><div class="e2e-prog-fill" id="e2e-pf" style="width:0%"></div></div>
+          <span style="font-size:11px;color:rgba(255,255,255,.4);" id="e2e-counter">0 / 9</span>
+        </div>
+      </div>
+
+      <div class="tip-box">
+        <div class="tb-icon">🎤</div>
+        <div class="tb-text">
+          <strong>Interview answer — "Explain Fiori Architecture":</strong><br>
+          "SAP Fiori has a <strong>SAPUI5 frontend</strong> in the browser connected via <strong>OData REST APIs</strong> through <strong>SAP Gateway</strong> to an <strong>ABAP or CAP backend</strong>, with <strong>SAP HANA</strong> as the database. The <strong>FLP</strong> is the unified shell. <strong>IAS</strong> handles authentication, <strong>XSUAA/PFCG</strong> handles authorization. The <strong>UI5 Runtime</strong> bootstraps the app — loading modules asynchronously, rendering controls, and managing data binding."
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ UNIT 9: Quiz ═══════════════ -->
+    <div class="unit" id="u9">
+      <div class="unit-tag">Unit 09 · Review</div>
+      <h2 class="unit-title">Quiz & Self-Assessment</h2>
+      <p class="unit-sub">Six questions covering everything in Day 2. Answer all before moving to Day 3.</p>
+
+      <div class="quiz">
+        <div class="quiz-q">Q1: Name the three layers of Fiori architecture and one component per layer.</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>Presentation:</strong> SAPUI5 / FLP Shell (browser) · <strong>Integration/API:</strong> SAP Gateway / CAP (OData middleware) · <strong>Database:</strong> SAP HANA (in-memory columnar store)</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q2: What does ICF do and where is it configured?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>ICF (Internet Communication Framework)</strong> is the HTTP service registration system in SAP NetWeaver. Every OData service is registered as a node under /sap/opu/odata/. ICF routes incoming HTTP requests (via ICM) to the correct ABAP handler class. Configured via transaction <strong>SICF</strong>; services are activated there and in <strong>/IWFND/MAINT_SERVICE</strong>.</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q3: What does sap.ui.define() do?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <code>sap.ui.define()</code> declares a UI5 AMD module. It takes: (1) an array of dependency paths, (2) a factory function receiving the loaded dependencies. The UI5 loader resolves all dependencies asynchronously before calling the factory. This prevents missing-dependency errors and enables parallel resource loading.</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q4: Hub vs Embedded — name one advantage of each.</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>Hub advantage:</strong> Can aggregate OData services from multiple backend systems behind one endpoint — ideal for multi-system landscapes. <strong>Embedded advantage:</strong> Simpler setup (no separate server, no RFC config), lower latency (in-process calls), standard for modern S/4HANA.</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q5: What are the four controller lifecycle hooks in order?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>onInit()</strong> — once when view created (no DOM yet) · <strong>onBeforeRendering()</strong> — before each render · <strong>onAfterRendering()</strong> — after each render (DOM available) · <strong>onExit()</strong> — when view destroyed (cleanup)</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q6: In BTP, what replaces PFCG roles and SAP Gateway?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>XSUAA</strong> (Extended Services User Account and Authentication) replaces PFCG roles for authorization on BTP — it issues JWT tokens with scopes. <strong>CAP</strong> (Cloud Application Programming Model) replaces SAP Gateway — CAP auto-exposes CDS entity definitions as OData V4 services without SEGW or MPC/DPC classes.</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+/* ── Navigation ── */
+const TOTAL=9;
+const titles=['','Architecture Overview','Frontend Components','Backend Components','SAP Gateway (Animated)','UI5 Runtime (Animated)','Frontend vs Backend','SAP BTP Architecture','E2E Flow (Interactive)','Quiz & Review'];
+let cur=1;
+function go(n,btn){
+  document.querySelectorAll('.unit').forEach(u=>u.classList.remove('active'));
+  document.querySelectorAll('.rail-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('u'+n).classList.add('active');
+  if(btn)btn.classList.add('active');
+  cur=n;
+  document.getElementById('ttl').textContent=titles[n];
+  document.getElementById('prog').style.width=Math.round(n/TOTAL*100)+'%';
+  document.querySelector('.content').scrollTop=0;
+}
+function nxt(){const n=cur<TOTAL?cur+1:1;go(n,document.querySelectorAll('.rail-item')[n-1]);}
+function rev(btn){const a=btn.nextElementSibling;a.classList.toggle('on');btn.textContent=a.classList.contains('on')?'Hide Answer':'Reveal Answer';}
+
+/* ── Tab toggle ── */
+function switchTab(id){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+/* ── Unit 1: Animated Architecture Packet ── */
+let archPlaying=false;
+function lerp(a,b,t){return a+(b-a)*t;}
+function animPkt(pktId, fromXY, toXY, color, dur, delay, onDone){
+  const pkt=document.getElementById(pktId);
+  if(!pkt)return;
+  pkt.setAttribute('fill',color);
+  pkt.setAttribute('opacity','1');
+  pkt.setAttribute('cx',fromXY[0]);
+  pkt.setAttribute('cy',fromXY[1]);
+  const start=performance.now()+delay;
+  function frame(now){
+    if(now<start){requestAnimationFrame(frame);return;}
+    const t=Math.min((now-start)/dur,1);
+    const ease=t<0.5?2*t*t:(4-2*t)*t-1;
+    pkt.setAttribute('cx',lerp(fromXY[0],toXY[0],ease));
+    pkt.setAttribute('cy',lerp(fromXY[1],toXY[1],ease));
+    if(t<1)requestAnimationFrame(frame);
+    else{pkt.setAttribute('opacity','0');if(onDone)onDone();}
+  }
+  requestAnimationFrame(frame);
+}
+const nodes={
+  browser:[75,55],flp:[75,145],gw:[340,105],abap:[340,200],hana:[600,150],auth:[75,230]
+};
+function glowNode(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.style.filter='drop-shadow(0 0 12px #0070f2)';
+  setTimeout(()=>el.style.filter='',600);
+}
+const statusMsgs=[
+  '1. 🌐 Browser fires OData GET /LeaveRequestSet',
+  '2. 🔐 Auth token validated by IAS/XSUAA',
+  '3. 🔗 Request arrives at SAP Gateway ICM',
+  '4. ⚙️ DPC GET_ENTITYSET calls ABAP logic',
+  '5. 🗄️ HANA returns rows to ABAP',
+  '6. ✅ JSON response back to SAPUI5 → table renders'
+];
+function setStatus(txt){
+  const el=document.getElementById('arch-status');
+  if(el)el.textContent=txt;
+}
+function playArch(){
+  if(archPlaying)return;
+  archPlaying=true;
+  const btn=document.getElementById('arch-play-btn');
+  if(btn)btn.textContent='⟳ Running...';
+  setStatus(statusMsgs[0]);
+  glowNode('a-browser');
+  setTimeout(()=>{
+    setStatus(statusMsgs[1]);
+    glowNode('a-auth');
+    animPkt('pkt1',nodes.browser,nodes.gw,'#ffde6a',800,0,()=>{
+      setStatus(statusMsgs[2]);
+      glowNode('a-gw');
+      animPkt('pkt2',nodes.gw,nodes.abap,'#5bbbff',700,0,()=>{
+        setStatus(statusMsgs[3]);
+        glowNode('a-abap');
+        animPkt('pkt3',nodes.abap,nodes.hana,'#4fd97a',700,0,()=>{
+          setStatus(statusMsgs[4]);
+          glowNode('a-hana');
+          setTimeout(()=>{
+            setStatus(statusMsgs[5]);
+            animPkt('pkt4',nodes.hana,nodes.browser,'#ff6a00',900,0,()=>{
+              glowNode('a-browser');
+              setStatus('✅ Complete! Data displayed in SAPUI5 table.');
+              setTimeout(()=>{
+                archPlaying=false;
+                if(btn)btn.textContent='▶ Send Request';
+                setStatus('→ Click "Send Request" to trace a live OData call');
+              },2000);
+            });
+          },400);
+        });
+      });
+    });
+  },300);
+}
+
+/* ── Unit 5: Bootstrap Animation ── */
+let bootStep=-1, bootTimer=null;
+function playBoot(){
+  if(bootStep>=9)return;
+  const btn=document.getElementById('boot-btn');
+  if(btn){btn.textContent='⟳ Booting...';btn.classList.add('active');}
+  function advance(){
+    bootStep++;
+    if(bootStep>9){
+      if(btn){btn.textContent='✅ Booted!';btn.classList.remove('active');}
+      return;
+    }
+    const el=document.getElementById('bs'+bootStep);
+    const fill=document.getElementById('bf'+bootStep);
+    if(el){el.classList.add('lit');}
+    if(fill){
+      setTimeout(()=>{fill.style.width='100%';},100);
+    }
+    if(bootStep<9) bootTimer=setTimeout(advance,700);
+    else{if(btn){btn.textContent='✅ Booted!';btn.classList.remove('active');}}
+  }
+  advance();
+}
+function resetBoot(){
+  clearTimeout(bootTimer);
+  bootStep=-1;
+  for(let i=0;i<10;i++){
+    const el=document.getElementById('bs'+i);
+    const fill=document.getElementById('bf'+i);
+    if(el)el.classList.remove('lit');
+    if(fill)fill.style.width='0%';
+  }
+  const btn=document.getElementById('boot-btn');
+  if(btn){btn.textContent='▶ Start Bootstrap';btn.classList.remove('active');}
+}
+
+/* ── Unit 8: E2E Step-through ── */
+const e2eSteps=[
+  {node:0,arrow:-1,step:'STEP 1 · BROWSER',text:'User navigates to the Fiori Launchpad URL. Browser makes an HTTPS GET request to the Approuter / Gateway server.'},
+  {node:1,arrow:0,step:'STEP 2 · AUTH (IAS / XSUAA)',text:'Approuter redirects to IAS. User logs in with credentials. XSUAA issues a JWT Bearer token containing the user\'s roles and scopes.'},
+  {node:2,arrow:1,step:'STEP 3 · FLP SHELL LOADS',text:'Fiori Launchpad shell renders. Reads user\'s PFCG role → catalog → tiles. Only authorized tiles appear on the home page.'},
+  {node:3,arrow:2,step:'STEP 4 · UI5 RUNTIME BOOTS',text:'User clicks "Leave Request" tile. SAPUI5 bootstraps: sap-ui-core.js → manifest.json → Component.js → root view renders → onInit() fires.'},
+  {node:4,arrow:3,step:'STEP 5 · OData REQUEST FIRES',text:'List binding on sap.m.Table triggers: GET /sap/opu/odata/sap/HCM_LEAVE_SRV/LeaveRequestSet?$filter=EmployeeID eq \'00001\''},
+  {node:5,arrow:4,step:'STEP 6 · SAP GATEWAY',text:'ICM receives HTTP request. ICF routes to the HCM_LEAVE_SRV service handler. Gateway parses the OData URL and calls DPC.GET_ENTITYSET.'},
+  {node:6,arrow:5,step:'STEP 7 · ABAP DPC',text:'DPC.GET_ENTITYSET executes: calls BAPI_EMPLOYEE_GETDATA or CDS view ZLEAVE_REQUEST_CDS. Business rules applied. Auth check: own records only.'},
+  {node:7,arrow:6,step:'STEP 8 · SAP HANA',text:'ABAP executes SELECT against SAP HANA via Open SQL. HANA\'s in-memory engine reads from columnar store. Returns rows in microseconds.'},
+  {node:8,arrow:7,step:'STEP 9 · TABLE RENDERS ✅',text:'JSON response arrives at SAPUI5 ODataModel. Data binding updates the model automatically. sap.m.Table re-renders — leave requests appear on screen.'}
+];
+let e2eCur=-1;
+function e2eNext(){
+  if(e2eCur>=e2eSteps.length-1)return;
+  e2eCur++;
+  const s=e2eSteps[e2eCur];
+  // Update nodes
+  for(let i=0;i<9;i++){
+    const n=document.getElementById('en'+i);
+    if(i<e2eCur)n.className='e2e-node done';
+    else if(i===e2eCur)n.className='e2e-node lit';
+    else n.className='e2e-node';
+  }
+  // Update arrows
+  for(let i=0;i<8;i++){
+    const a=document.getElementById('ea'+i);
+    if(i<e2eCur)a.className='e2e-arrow lit';
+    else a.className='e2e-arrow';
+  }
+  // Update detail
+  document.getElementById('e2e-detail').innerHTML=`<div class="ed-step">${s.step}</div><div class="ed-text">${s.text}</div>`;
+  // Progress
+  const pct=Math.round((e2eCur+1)/e2eSteps.length*100);
+  document.getElementById('e2e-pf').style.width=pct+'%';
+  document.getElementById('e2e-counter').textContent=`${e2eCur+1} / ${e2eSteps.length}`;
+}
+function e2eReset(){
+  e2eCur=-1;
+  for(let i=0;i<9;i++)document.getElementById('en'+i).className='e2e-node';
+  for(let i=0;i<8;i++)document.getElementById('ea'+i).className='e2e-arrow';
+  document.getElementById('e2e-detail').innerHTML='<div class="ed-step">READY</div><div class="ed-text">Click <strong>Next Step</strong> to start the walkthrough. We\'ll trace a Leave Request list fetch from click to data.</div>';
+  document.getElementById('e2e-pf').style.width='0%';
+  document.getElementById('e2e-counter').textContent='0 / 9';
+}
+</script>
+</body>
+</html>
