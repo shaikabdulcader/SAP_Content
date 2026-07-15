@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 5 — SAPUI5 Basics | Animated Visualizer</title>
+<style>
+:root{
+  --sap-blue:#0070f2;--sap-dark:#003169;--sap-green:#107e3e;
+  --sap-orange:#e9730c;--sap-red:#bb0000;--sap-purple:#6a2c8c;
+  --bg:#f5f7fa;--line:#e0e6ef;--ink:#1d2d44;--ink-dim:#5a6a7e;
+  --accent-soft:rgba(0,112,242,.08);
+}
+*,*::before,*::after{box-sizing:border-box;}
+html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);}
+.app{display:grid;grid-template-columns:272px 1fr;height:100vh;overflow:hidden;}
+.rail{background:var(--sap-dark);display:flex;flex-direction:column;overflow:hidden;}
+.rail-head{padding:22px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1);}
+.rail-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;margin-bottom:10px;text-transform:uppercase;}
+.rail-head h1{margin:0;font-size:15px;font-weight:700;color:#fff;line-height:1.35;}
+.rail-head p{margin:5px 0 0;font-size:11px;color:rgba(255,255,255,.45);}
+.rail-list{flex:1;overflow-y:auto;padding:10px 8px;}
+.rail-list::-webkit-scrollbar{width:4px;}
+.rail-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);}
+.rail-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;font-size:12.5px;color:rgba(255,255,255,.5);cursor:pointer;margin-bottom:2px;border-left:3px solid transparent;transition:all .18s;user-select:none;}
+.rail-item .num{font-size:10px;font-weight:700;color:rgba(255,255,255,.25);min-width:18px;}
+.rail-item .lbl{flex:1;line-height:1.3;}
+.rail-item .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.12);flex-shrink:0;}
+.rail-item:hover{background:rgba(255,255,255,.07);color:#fff;}
+.rail-item.active{background:rgba(0,112,242,.28);color:#fff;border-left-color:var(--sap-blue);}
+.rail-item.active .num{color:#5bbbff;}
+.rail-item.active .dot{background:#5bbbff;}
+.rail-footer{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:10.5px;color:rgba(255,255,255,.3);}
+.rail-footer span{color:rgba(255,255,255,.6);font-weight:600;}
+.main{display:flex;flex-direction:column;overflow:hidden;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:54px;background:#fff;border-bottom:1px solid var(--line);flex-shrink:0;}
+.topbar .breadcrumb{font-size:12px;color:var(--ink-dim);}
+.topbar .breadcrumb strong{color:var(--ink);font-weight:600;}
+.topbar .pill{font-size:11px;padding:4px 14px;border-radius:20px;background:#e8f4fd;color:var(--sap-blue);font-weight:600;cursor:pointer;border:1px solid #c2dff7;transition:all .18s;}
+.topbar .pill:hover{background:var(--sap-blue);color:#fff;}
+.prog-bar{height:3px;background:var(--line);flex-shrink:0;}
+.prog-fill{height:100%;background:var(--sap-blue);transition:width .4s ease;}
+.content{flex:1;overflow-y:auto;padding:26px 32px 60px;}
+.content::-webkit-scrollbar{width:6px;}
+.content::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+.unit{display:none;}
+.unit.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.unit-tag{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--sap-blue);margin-bottom:8px;}
+.unit-title{font-size:22px;font-weight:700;color:var(--ink);margin:0 0 6px;}
+.unit-sub{font-size:13.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 20px;}
+.sec{font-size:14.5px;font-weight:700;color:var(--sap-dark);margin:22px 0 10px;display:flex;align-items:center;gap:8px;}
+.sec::before{content:'';display:inline-block;width:4px;height:16px;background:var(--sap-blue);border-radius:2px;}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:12px 0;}
+.card{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:15px;transition:all .18s;}
+.card:hover{border-color:var(--sap-blue);box-shadow:0 2px 12px rgba(0,112,242,.1);transform:translateY(-1px);}
+.card .ci{font-size:22px;margin-bottom:8px;}
+.card .ct{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.card .cb{font-size:12px;color:var(--ink-dim);line-height:1.55;}
+.info{display:flex;gap:12px;padding:13px 16px;border-radius:10px;margin:12px 0;}
+.info.tip{background:#fff8e6;border:1.5px solid #f5c842;}
+.info.note{background:#e8f4fd;border:1.5px solid #c2dff7;}
+.info.green{background:#e8f5ee;border:1.5px solid #b5dcc5;}
+.info .ii{font-size:18px;flex-shrink:0;}
+.info .it{font-size:12.5px;line-height:1.65;}
+.info.tip .it{color:#6b4f00;}
+.info.note .it{color:#002060;}
+.info.green .it{color:#0a3018;}
+.tbl{width:100%;border-collapse:collapse;margin:12px 0;font-size:12.5px;}
+.tbl th{background:var(--sap-dark);color:#fff;padding:9px 13px;text-align:left;font-size:11px;font-weight:700;}
+.tbl th:first-child{border-radius:7px 0 0 0;}.tbl th:last-child{border-radius:0 7px 0 0;}
+.tbl td{padding:9px 13px;border-bottom:1px solid var(--line);vertical-align:top;}
+.tbl tr:hover td{background:var(--accent-soft);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.quiz{background:#f0f7ff;border:1.5px solid #c2dff7;border-radius:10px;padding:15px 18px;margin:12px 0;}
+.quiz-q{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:10px;}
+.rev-btn{background:var(--sap-blue);color:#fff;border:none;padding:7px 16px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s;}
+.rev-btn:hover{background:var(--sap-dark);}
+.quiz-a{display:none;margin-top:11px;font-size:13px;color:var(--ink);line-height:1.65;padding-top:10px;border-top:1px solid #c2dff7;}
+.quiz-a.on{display:block;}
+.quiz-a code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.chk{color:var(--sap-green);font-weight:700;}
+.tip-box{display:flex;gap:12px;padding:16px 18px;background:linear-gradient(135deg,#003169,#0050b3);border-radius:12px;margin:18px 0;color:#fff;}
+.tb-icon{font-size:22px;flex-shrink:0;}
+.tb-text{font-size:13px;line-height:1.7;}
+.tb-text strong{color:#ffde6a;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0;}
+code{font-family:'JetBrains Mono',Consolas,monospace;}
+
+/* ════════════════ ANIMATIONS ════════════════ */
+.svg-wrap{background:#0d1a2e;border-radius:14px;padding:20px;margin:16px 0;overflow:hidden;border:1.5px solid #1e3050;}
+.svg-wrap svg{display:block;margin:0 auto;}
+.anim-btn{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.2);padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;margin-bottom:12px;}
+.anim-btn:hover{background:rgba(0,112,242,.4);border-color:#0070f2;}
+.anim-btn.go{background:#0070f2;border-color:#0070f2;}
+.node-label{font-size:11px;font-weight:700;fill:#fff;}
+.node-sub{font-size:9px;fill:rgba(255,255,255,.55);}
+.arrow-label{font-size:9px;fill:#5bbbff;font-weight:600;}
+
+@keyframes flowR{to{stroke-dashoffset:-15;}}
+@keyframes glowPulse{0%,100%{filter:drop-shadow(0 0 0 transparent);}50%{filter:drop-shadow(0 0 10px #0070f2);}}
+@keyframes countUp{from{opacity:0;transform:scale(.8);}to{opacity:1;transform:scale(1);}}
+@keyframes typeChar{from{opacity:0;}to{opacity:1;}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+@keyframes popIn{from{opacity:0;transform:scale(.9) translateY(6px);}to{opacity:1;transform:scale(1) translateY(0);}}
+
+/* Code display (mono terminal) */
+.url-display{background:#0d1520;border-radius:10px;padding:16px 20px;margin:14px 0;border:1.5px solid #1e3050;font-family:'JetBrains Mono',Consolas,monospace;}
+.url-hash{font-size:15px;font-weight:700;color:#4fd97a;letter-spacing:.3px;word-break:break-all;line-height:1.7;}
+.url-cursor{animation:blink 1s infinite;}
+
+/* Generic mono block */
+.mono-block{background:#0d1520;border-radius:10px;padding:14px 16px;margin:12px 0;font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.8);line-height:1.75;border:1.5px solid #1e3050;overflow-x:auto;white-space:pre;}
+.mono-block .tag{color:#5bbbff;}.mono-block .attr{color:#ffaa44;}.mono-block .val{color:#4fd97a;}.mono-block .cmt{color:rgba(255,255,255,.4);}.mono-block .kw{color:#ff9de2;}.mono-block .fn{color:#ffd966;}
+
+/* pipeline steps (reused) */
+.res-steps{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+.res-step{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);font-size:12px;color:rgba(255,255,255,.72);transition:all .5s ease;}
+.res-step.lit{background:rgba(0,112,242,.2);border-color:#0070f2;color:#fff;}
+.res-step.done{background:rgba(16,126,62,.2);border-color:#4fd97a;color:rgba(255,255,255,.8);}
+.res-step .rs-icon{font-size:16px;flex-shrink:0;}
+.res-step .rs-text{flex:1;}
+.res-step .rs-text strong{color:#5bbbff;}
+.res-step.lit .rs-text strong{color:#a9d8ff;}
+
+/* ── Control gallery (Unit 2) — live rendered UI5-style controls ── */
+.ctrl-lab{background:#0d1a2e;border-radius:14px;padding:20px;margin:14px 0;border:1.5px solid #1e3050;}
+.ctrl-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.ctrl-tab{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.14);color:rgba(255,255,255,.72);font-size:11.5px;font-weight:600;padding:7px 13px;border-radius:7px;cursor:pointer;transition:all .18s;}
+.ctrl-tab:hover{border-color:#0070f2;color:#fff;}
+.ctrl-tab.on{background:rgba(0,112,242,.28);border-color:#0070f2;color:#fff;}
+.ctrl-stage{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:760px){.ctrl-stage{grid-template-columns:1fr;}}
+.ctrl-preview{background:#f5f7fa;border-radius:10px;padding:20px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:12px;min-height:150px;border:1.5px solid var(--line);}
+.ctrl-code{background:#0d1520;border-radius:10px;padding:14px 16px;border:1.5px solid #1e3050;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.7;color:rgba(255,255,255,.8);overflow-x:auto;}
+.ctrl-code .tag{color:#5bbbff;}.ctrl-code .attr{color:#ffaa44;}.ctrl-code .val{color:#4fd97a;}
+.ctrl-desc{margin-top:12px;background:rgba(255,255,255,.05);border-radius:8px;padding:12px 14px;font-size:12.5px;color:#e8eef6;line-height:1.65;border:1.5px solid rgba(255,255,255,.08);}
+.ctrl-desc strong{color:#5bbbff;}
+/* fake sapui5 controls */
+.u5-btn{background:#0070f2;color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:0 1px 2px rgba(0,0,0,.1);transition:all .15s;}
+.u5-btn:hover{background:#0058c9;}
+.u5-btn.ghost{background:transparent;color:#0070f2;border:1.5px solid #0070f2;}
+.u5-input{padding:8px 12px;border:1.5px solid #89919a;border-radius:6px;font-size:13px;font-family:inherit;width:100%;max-width:230px;}
+.u5-input:focus{outline:none;border-color:#0070f2;box-shadow:0 0 0 2px rgba(0,112,242,.2);}
+.u5-cb{display:flex;align-items:center;gap:8px;font-size:13px;color:#1d2d44;cursor:pointer;}
+.u5-cb input{width:16px;height:16px;accent-color:#0070f2;}
+.u5-switch{position:relative;width:46px;height:24px;background:#107e3e;border-radius:20px;cursor:pointer;transition:background .2s;}
+.u5-switch.off{background:#bb0000;}
+.u5-switch::after{content:'';position:absolute;top:2px;left:24px;width:20px;height:20px;background:#fff;border-radius:50%;transition:left .2s;}
+.u5-switch.off::after{left:2px;}
+.u5-title{font-size:18px;font-weight:700;color:#32363a;}
+.u5-obj{width:100%;max-width:280px;background:#fff;border:1px solid #e0e6ef;border-radius:8px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.u5-obj .oh-t{font-size:15px;font-weight:700;color:#0070f2;}
+.u5-obj .oh-n{font-size:13px;color:#32363a;margin-top:2px;}
+.u5-obj .oh-s{display:inline-block;margin-top:8px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;background:#e8f5ee;color:#107e3e;}
+.u5-list{width:100%;max-width:280px;background:#fff;border:1px solid #e0e6ef;border-radius:8px;overflow:hidden;}
+.u5-list .li{padding:10px 14px;font-size:13px;color:#32363a;border-bottom:1px solid #eef1f5;display:flex;justify-content:space-between;}
+.u5-list .li:last-child{border-bottom:none;}
+.u5-list .li:hover{background:#f5f7fa;}
+.u5-list .li .v{color:#0070f2;font-weight:600;}
+
+/* ── Data binding demo (Unit 4) ── */
+.bind-lab{background:#0d1a2e;border-radius:14px;padding:22px;margin:14px 0;border:1.5px solid #1e3050;}
+.bind-flow{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;}
+@media(max-width:720px){.bind-flow{grid-template-columns:1fr;}}
+.bind-box{background:#0d1520;border:1.5px solid #1e3050;border-radius:10px;padding:16px;}
+.bind-box.model{border-color:#ffaa44;}
+.bind-box.view{border-color:#4fd97a;}
+.bind-box h4{margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;}
+.bind-box.model h4{color:#ffaa44;}
+.bind-box.view h4{color:#4fd97a;}
+.bind-field{font-size:12px;color:rgba(255,255,255,.8);font-family:'JetBrains Mono',monospace;margin:5px 0;}
+.bind-field .bk{color:#5bbbff;}
+.bind-arrow{font-size:26px;color:#5bbbff;text-align:center;animation:none;}
+.bind-input{padding:8px 10px;border:1.5px solid #3a4a63;border-radius:6px;font-size:13px;font-family:'JetBrains Mono',monospace;width:100%;background:#0a0f18;color:#4fd97a;}
+.bind-input:focus{outline:none;border-color:#4fd97a;}
+.bind-view-live{background:#f5f7fa;border-radius:8px;padding:14px;margin-top:8px;color:#1d2d44;}
+.bind-view-live .greet{font-size:15px;font-weight:700;color:#0070f2;}
+.bind-view-live .sub{font-size:12px;color:#5a6a7e;margin-top:3px;}
+.bind-flash{animation:bindFlash .6s ease;}
+@keyframes bindFlash{0%{background:rgba(79,217,122,.4);}100%{background:transparent;}}
+
+/* ── MVC animated diagram (Unit 3) ── */
+.mvc-info{margin-top:14px;background:rgba(255,255,255,.05);border-radius:10px;padding:14px 16px;font-size:12.5px;color:#e8eef6;line-height:1.7;min-height:58px;border:1.5px solid rgba(255,255,255,.08);transition:all .3s;}
+.mvc-info strong{color:#5bbbff;}
+.mvc-info code{background:rgba(0,0,0,.35);padding:1px 6px;border-radius:4px;color:#4fd97a;}
+
+/* ── Tools comparison cards (Unit 5) ── */
+.tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0;}
+@media(max-width:720px){.tool-grid{grid-template-columns:1fr;}}
+.tool-card{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:0;overflow:hidden;transition:all .18s;}
+.tool-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08);transform:translateY(-2px);}
+.tool-head{padding:14px 16px;color:#fff;display:flex;align-items:center;gap:10px;}
+.tool-head.legacy{background:linear-gradient(135deg,#6a5a2c,#8a6d00);}
+.tool-head.current{background:linear-gradient(135deg,#003169,#0070f2);}
+.tool-head .th-ic{font-size:22px;}
+.tool-head .th-t{font-size:14px;font-weight:700;}
+.tool-head .th-s{font-size:10px;opacity:.85;font-weight:600;text-transform:uppercase;letter-spacing:.6px;}
+.tool-body{padding:14px 16px;}
+.tool-body li{font-size:12px;color:var(--ink);line-height:1.5;margin-bottom:7px;list-style:none;padding-left:18px;position:relative;}
+.tool-body li::before{content:'▸';position:absolute;left:0;color:var(--sap-blue);}
+.tool-tag{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 9px;border-radius:12px;margin-left:auto;}
+.tool-tag.dep{background:#fdecea;color:#bb0000;}
+.tool-tag.now{background:#e8f5ee;color:#107e3e;}
+
+/* ── App structure tree (Unit 6) ── */
+.tree-lab{background:#0d1a2e;border-radius:14px;padding:20px;margin:14px 0;border:1.5px solid #1e3050;}
+.tree{font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:2;color:rgba(255,255,255,.82);}
+.tree .row{display:flex;align-items:center;gap:8px;padding:2px 8px;border-radius:6px;cursor:pointer;transition:all .15s;}
+.tree .row:hover{background:rgba(0,112,242,.15);}
+.tree .row.sel{background:rgba(0,112,242,.28);}
+.tree .fi{width:18px;text-align:center;}
+.tree .fn{color:#fff;}
+.tree .fn.folder{color:#ffd966;}
+.tree-desc{margin-top:12px;background:rgba(255,255,255,.05);border-radius:8px;padding:12px 14px;font-size:12.5px;color:#e8eef6;line-height:1.65;min-height:52px;border:1.5px solid rgba(255,255,255,.08);}
+.tree-desc strong{color:#5bbbff;}
+.tree-desc code{background:rgba(0,0,0,.35);padding:1px 6px;border-radius:4px;color:#4fd97a;}
+
+/* quiz-in-unit answer options (Unit 8) */
+.qopt{display:block;width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:10px 14px;font-size:12.5px;color:var(--ink);cursor:pointer;margin:6px 0;transition:all .15s;font-family:inherit;}
+.qopt:hover{border-color:var(--sap-blue);background:var(--accent-soft);}
+.qopt.correct{border-color:var(--sap-green);background:#e8f5ee;color:#0a3018;font-weight:600;}
+.qopt.wrong{border-color:var(--sap-red);background:#fdecea;color:#660000;}
+.qfb{font-size:12.5px;margin-top:8px;line-height:1.6;display:none;}
+.qfb.on{display:block;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- RAIL -->
+<div class="rail">
+  <div class="rail-head">
+    <div class="rail-badge">📅 Day 5</div>
+    <h1>SAPUI5 Basics</h1>
+    <p>Controls · MVC · Dev Tools · Animated</p>
+  </div>
+  <div class="rail-list">
+    <div class="rail-item active" onclick="go(1,this)"><span class="num">01</span><span class="lbl">What Is SAPUI5?</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(2,this)"><span class="num">02</span><span class="lbl">UI5 Controls (Interactive)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(3,this)"><span class="num">03</span><span class="lbl">MVC Architecture (Animated)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(4,this)"><span class="num">04</span><span class="lbl">Data Binding (Live Demo)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(5,this)"><span class="num">05</span><span class="lbl">Dev Tools: Web IDE vs BAS</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(6,this)"><span class="num">06</span><span class="lbl">Project Structure (Explorer)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(7,this)"><span class="num">07</span><span class="lbl">Bootstrap &amp; App Lifecycle</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(8,this)"><span class="num">08</span><span class="lbl">Knowledge Check</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(9,this)"><span class="num">09</span><span class="lbl">Quiz &amp; Review</span><span class="dot"></span></div>
+  </div>
+  <div class="rail-footer"><span>Parul GC · ODD SEM 2026</span> · SAP Training</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="breadcrumb">Day 5 — SAPUI5 Basics &rsaquo; <strong id="ttl">What Is SAPUI5?</strong></div>
+    <button class="pill" onclick="nxt()">Next →</button>
+  </div>
+  <div class="prog-bar"><div class="prog-fill" id="prog" style="width:11%"></div></div>
+  <div class="content">
+
+    <!-- ═══ U1: What Is SAPUI5 ═══ -->
+    <div class="unit active" id="u1">
+      <div class="unit-tag">Unit 01 · Foundation</div>
+      <h2 class="unit-title">What Is SAPUI5?</h2>
+      <p class="unit-sub">SAPUI5 is SAP's <strong>JavaScript UI framework</strong> for building responsive enterprise web apps. It's the technology that actually <em>renders</em> every Fiori app you see in the Launchpad — the buttons, tables, and forms are all UI5 controls.</p>
+
+      <div class="sec">Where It Fits (Recap From Day 1–4)</div>
+      <div class="cards">
+        <div class="card"><div class="ci">🎨</div><div class="ct">Day 1 — Fiori UX</div><div class="cb">The design principles: role-based, responsive, simple.</div></div>
+        <div class="card"><div class="ci">🏗️</div><div class="ct">Day 2 — Architecture</div><div class="cb">UI5 runtime is the <em>frontend</em> half that talks to Gateway.</div></div>
+        <div class="card"><div class="ci">🚀</div><div class="ct">Day 3 — Launchpad</div><div class="cb">Tiles launch UI5 apps served from the app repository.</div></div>
+        <div class="card"><div class="ci">🔌</div><div class="ct">Day 4 — OData</div><div class="cb">UI5 apps consume OData services for their data.</div></div>
+        <div class="card" style="border-color:var(--sap-blue);box-shadow:0 2px 12px rgba(0,112,242,.12);"><div class="ci">🧩</div><div class="ct">Day 5 — SAPUI5</div><div class="cb"><strong>Today:</strong> the controls &amp; code that build the actual screens.</div></div>
+      </div>
+
+      <div class="sec">Why SAPUI5 Matters</div>
+      <table class="tbl">
+        <thead><tr><th>Feature</th><th>What It Gives You</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Rich control library</strong></td><td>100s of ready-made UI pieces — buttons, tables, charts, dialogs</td></tr>
+          <tr><td><strong>Responsive</strong></td><td>One code base adapts to phone, tablet, and desktop automatically</td></tr>
+          <tr><td><strong>MVC pattern</strong></td><td>Clean separation of screen (View), logic (Controller), and data (Model)</td></tr>
+          <tr><td><strong>Data binding</strong></td><td>Connect UI to data once — it updates itself when data changes</td></tr>
+          <tr><td><strong>Fiori theming</strong></td><td>Built-in themes (e.g. <em>Horizon</em>) give the consistent Fiori look</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info note">
+        <div class="ii">📌</div>
+        <div class="it"><strong>SAPUI5 vs OpenUI5:</strong> they're the same framework. <strong>OpenUI5</strong> is the free open-source core; <strong>SAPUI5</strong> is SAP's licensed version with extra enterprise controls (like the smart/analytical controls) and official support.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: In one sentence, what does SAPUI5 do?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> SAPUI5 is SAP's JavaScript framework that <strong>builds and renders the user interface</strong> of Fiori apps — providing ready-made responsive controls, the MVC structure, and data binding to OData services.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U2: UI5 Controls ═══ -->
+    <div class="unit" id="u2">
+      <div class="unit-tag">Unit 02 · Controls — Interactive</div>
+      <h2 class="unit-title">UI5 Controls</h2>
+      <p class="unit-sub">A <strong>control</strong> is a reusable UI building block — a button, an input, a list. Each one is a JavaScript object with <em>properties</em> (how it looks) and <em>events</em> (what it does). Click a control below to see it live and read its XML.</p>
+
+      <div class="ctrl-lab">
+        <div class="ctrl-tabs">
+          <div class="ctrl-tab on" id="ct-button" onclick="ctrlPick('button',this)">Button</div>
+          <div class="ctrl-tab" id="ct-input" onclick="ctrlPick('input',this)">Input</div>
+          <div class="ctrl-tab" id="ct-checkbox" onclick="ctrlPick('checkbox',this)">CheckBox</div>
+          <div class="ctrl-tab" id="ct-switch" onclick="ctrlPick('switch',this)">Switch</div>
+          <div class="ctrl-tab" id="ct-list" onclick="ctrlPick('list',this)">List</div>
+          <div class="ctrl-tab" id="ct-object" onclick="ctrlPick('object',this)">ObjectHeader</div>
+        </div>
+        <div class="ctrl-stage">
+          <div>
+            <div style="font-size:9.5px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">Live Preview</div>
+            <div class="ctrl-preview" id="ctrl-preview"></div>
+          </div>
+          <div>
+            <div style="font-size:9.5px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">XML View Code</div>
+            <div class="ctrl-code" id="ctrl-code"></div>
+          </div>
+        </div>
+        <div class="ctrl-desc" id="ctrl-desc"></div>
+      </div>
+
+      <div class="sec">Two Ways to Create a Control</div>
+      <div class="two-col">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--sap-dark);margin-bottom:6px;">✅ XML View (recommended)</div>
+          <div class="mono-block"><span class="tag">&lt;Button</span>
+  <span class="attr">text</span>=<span class="val">"Press Me"</span>
+  <span class="attr">press</span>=<span class="val">".onPress"</span> <span class="tag">/&gt;</span></div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--sap-dark);margin-bottom:6px;">JavaScript (imperative)</div>
+          <div class="mono-block"><span class="kw">new</span> <span class="fn">Button</span>({
+  text: <span class="val">"Press Me"</span>,
+  press: <span class="fn">onPress</span>
+});</div>
+        </div>
+      </div>
+
+      <div class="info tip">
+        <div class="ii">💡</div>
+        <div class="it"><strong>Prefer XML views.</strong> They're declarative (easy to read), tooling-friendly, and keep the UI separate from logic. You'll write the vast majority of your screens in XML and put behaviour in the controller.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: What's the difference between a control's <em>property</em> and its <em>event</em>?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> A <strong>property</strong> describes how the control looks or what state it's in (e.g. <code>text</code>, <code>enabled</code>, <code>value</code>). An <strong>event</strong> is something the user triggers that runs your code (e.g. <code>press</code>, <code>change</code>). Properties are nouns; events are verbs.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U3: MVC Architecture ═══ -->
+    <div class="unit" id="u3">
+      <div class="unit-tag">Unit 03 · Architecture — Animated</div>
+      <h2 class="unit-title">MVC — Model, View, Controller</h2>
+      <p class="unit-sub">SAPUI5 organises every app into three parts so responsibilities stay separate. Press play to see how a user action flows through all three.</p>
+
+      <div class="svg-wrap">
+        <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="anim-btn" id="mvc-play" onclick="playMvc()">▶ Play the MVC flow</button>
+          <button class="anim-btn" id="mvc-pause" onclick="pauseMvc()" style="display:none;">⏸ Pause</button>
+        </div>
+        <svg viewBox="0 0 640 260" width="100%" style="max-width:640px;">
+          <!-- View -->
+          <rect id="mvc-view" x="40" y="40" width="160" height="90" rx="12" fill="rgba(16,126,62,.18)" stroke="#4fd97a" stroke-width="2"/>
+          <text x="120" y="72" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#fff;">View</text>
+          <text x="120" y="92" text-anchor="middle" class="node-sub">XML — the screen</text>
+          <text x="120" y="108" text-anchor="middle" class="node-sub">buttons, tables, forms</text>
+
+          <!-- Controller -->
+          <rect id="mvc-ctrl" x="440" y="40" width="160" height="90" rx="12" fill="rgba(0,112,242,.18)" stroke="#5bbbff" stroke-width="2"/>
+          <text x="520" y="72" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#fff;">Controller</text>
+          <text x="520" y="92" text-anchor="middle" class="node-sub">JS — the logic</text>
+          <text x="520" y="108" text-anchor="middle" class="node-sub">event handlers</text>
+
+          <!-- Model -->
+          <rect id="mvc-model" x="240" y="165" width="160" height="80" rx="12" fill="rgba(233,115,12,.18)" stroke="#ffaa44" stroke-width="2"/>
+          <text x="320" y="197" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#fff;">Model</text>
+          <text x="320" y="217" text-anchor="middle" class="node-sub">JSON / OData data</text>
+
+          <!-- arrows -->
+          <line id="mvc-a1" x1="200" y1="72" x2="436" y2="72" stroke="#5bbbff" stroke-width="2.5" stroke-dasharray="6 5" opacity=".15" marker-end="url(#mvcArr)"/>
+          <text id="mvc-l1" x="318" y="62" text-anchor="middle" class="arrow-label" opacity="0">1. user clicks → event</text>
+          <line id="mvc-a2" x1="500" y1="130" x2="380" y2="168" stroke="#ffaa44" stroke-width="2.5" stroke-dasharray="6 5" opacity=".15" marker-end="url(#mvcArr2)"/>
+          <text id="mvc-l2" x="470" y="158" text-anchor="middle" class="arrow-label" opacity="0" style="fill:#ffaa44;">2. update data</text>
+          <line id="mvc-a3" x1="260" y1="168" x2="140" y2="132" stroke="#4fd97a" stroke-width="2.5" stroke-dasharray="6 5" opacity=".15" marker-end="url(#mvcArr3)"/>
+          <text id="mvc-l3" x="170" y="158" text-anchor="middle" class="arrow-label" opacity="0" style="fill:#4fd97a;">3. binding refreshes view</text>
+          <defs>
+            <marker id="mvcArr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#5bbbff"/></marker>
+            <marker id="mvcArr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ffaa44"/></marker>
+            <marker id="mvcArr3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#4fd97a"/></marker>
+          </defs>
+        </svg>
+        <div class="mvc-info" id="mvc-info">Three parts, one job each. Press play to follow a button click all the way through and back.</div>
+      </div>
+
+      <table class="tbl">
+        <thead><tr><th>Part</th><th>File Type</th><th>Responsibility</th></tr></thead>
+        <tbody>
+          <tr><td><strong style="color:var(--sap-green)">View</strong></td><td><code>.view.xml</code></td><td>What the user sees — layout &amp; controls. No logic.</td></tr>
+          <tr><td><strong style="color:var(--sap-blue)">Controller</strong></td><td><code>.controller.js</code></td><td>What happens — event handlers, calls to the model.</td></tr>
+          <tr><td><strong style="color:var(--sap-orange)">Model</strong></td><td>JSON / OData</td><td>The data — held in a model, bound to the view.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info note">
+        <div class="ii">🧭</div>
+        <div class="it"><strong>Why separate them?</strong> A designer can change the View (XML) without breaking logic; a developer can change the Controller without touching the layout; and the Model can switch from test JSON to live OData with no view changes. Same idea as the Client-Server split you saw on Day 4.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Where does the code that runs when a user presses a button live?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> In the <strong>Controller</strong> (<code>.controller.js</code>). The View's button declares <code>press=".onPress"</code>, and the matching <code>onPress</code> function sits in the controller. The View stays purely visual.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U4: Data Binding ═══ -->
+    <div class="unit" id="u4">
+      <div class="unit-tag">Unit 04 · Data Binding — Live Demo</div>
+      <h2 class="unit-title">Data Binding</h2>
+      <p class="unit-sub">Binding connects a control to a piece of data <em>once</em>, and UI5 keeps them in sync automatically. Change the data below and watch the view update instantly — no manual DOM code.</p>
+
+      <div class="bind-lab">
+        <div class="bind-flow">
+          <div class="bind-box model">
+            <h4>🗂️ Model (JSON)</h4>
+            <div class="bind-field"><span class="bk">name</span>:</div>
+            <input class="bind-input" id="bind-name" value="Aisha" oninput="bindUpdate()">
+            <div class="bind-field" style="margin-top:10px;"><span class="bk">role</span>:</div>
+            <input class="bind-input" id="bind-role" value="Developer" oninput="bindUpdate()">
+          </div>
+          <div class="bind-arrow" id="bind-arrow">⟶</div>
+          <div class="bind-box view">
+            <h4>🖥️ View (bound)</h4>
+            <div class="mono-block" style="margin:0 0 8px;font-size:11px;"><span class="tag">&lt;Text</span> <span class="attr">text</span>=<span class="val">"{/name}"</span> <span class="tag">/&gt;</span></div>
+            <div class="bind-view-live" id="bind-live">
+              <div class="greet">Hello, <span id="bv-name">Aisha</span>!</div>
+              <div class="sub">Role: <span id="bv-role">Developer</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--ink-dim);line-height:1.6;margin:6px 2px 0;">The <code>{/name}</code> in the view is a <strong>binding path</strong> — it points at the <code>name</code> field in the model. Type above and the view refreshes on its own.</p>
+
+      <div class="sec">The Common Model Types</div>
+      <table class="tbl">
+        <thead><tr><th>Model</th><th>Use For</th><th>Source</th></tr></thead>
+        <tbody>
+          <tr><td><strong>JSONModel</strong></td><td>Local / small data, config, test data</td><td>A JS object or <code>.json</code> file</td></tr>
+          <tr><td><strong>ODataModel</strong></td><td>Live backend business data</td><td>An OData service (Day 4!)</td></tr>
+          <tr><td><strong>ResourceModel</strong></td><td>Translated texts (i18n)</td><td><code>i18n.properties</code> files</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sec">Binding Syntaxes You'll See</div>
+      <table class="tbl">
+        <thead><tr><th>Syntax</th><th>Name</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>text="{/name}"</code></td><td>Property binding</td><td>Bind one control property to one field</td></tr>
+          <tr><td><code>items="{/products}"</code></td><td>Aggregation binding</td><td>Repeat a template for each item in a list</td></tr>
+          <tr><td><code>{i18n>appTitle}</code></td><td>Named model binding</td><td>Read from a specific named model</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info green">
+        <div class="ii">🔗</div>
+        <div class="it"><strong>Two-way binding</strong> means it works both directions: if the user edits an <code>Input</code> bound to <code>{/name}</code>, the model updates too — exactly like the demo above. This is the magic that removes most manual UI code.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: You need to show a table of leave requests from your SAP backend. Which model?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>ODataModel</strong> — it connects directly to the OData service you registered on Day 4. You'd bind the table's <code>items</code> to the entity set (e.g. <code>items="{/LeaveRequestSet}"</code>) and each row fills in automatically.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U5: Dev Tools ═══ -->
+    <div class="unit" id="u5">
+      <div class="unit-tag">Unit 05 · Development Tools</div>
+      <h2 class="unit-title">Web IDE vs Business Application Studio</h2>
+      <p class="unit-sub">These are the environments where you write UI5 apps. <strong>SAP Web IDE</strong> is the older tool; <strong>Business Application Studio (BAS)</strong> is its modern successor and the one you'll use today.</p>
+
+      <div class="tool-grid">
+        <div class="tool-card">
+          <div class="tool-head legacy">
+            <span class="th-ic">🧓</span>
+            <div><div class="th-t">SAP Web IDE</div><div class="th-s">The predecessor</div></div>
+            <span class="tool-tag dep">Legacy</span>
+          </div>
+          <div class="tool-body">
+            <ul style="margin:0;padding:0;">
+              <li>Browser-based IDE on the older Neo environment</li>
+              <li>Was the standard tool for years</li>
+              <li>No longer sold to new customers</li>
+              <li>Planned sunset on <strong>Dec 31, 2028</strong></li>
+              <li>You may still meet it on existing projects</li>
+            </ul>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-head current">
+            <span class="th-ic">🚀</span>
+            <div><div class="th-t">Business Application Studio</div><div class="th-s">The current standard</div></div>
+            <span class="tool-tag now">Use This</span>
+          </div>
+          <div class="tool-body">
+            <ul style="margin:0;padding:0;">
+              <li>Cloud IDE on SAP BTP, built on VS Code</li>
+              <li>Default for new customers since 2020</li>
+              <li>"Dev spaces" pre-loaded for Fiori/UI5</li>
+              <li>Project wizards, guided templates, deploy tools</li>
+              <li>Integrated preview, debugging &amp; Git</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="info note">
+        <div class="ii">🧭</div>
+        <div class="it"><strong>The short version:</strong> if the syllabus says "Web IDE / BAS", think of them as old vs new versions of the <em>same idea</em> — a browser-based place to build UI5 apps. New work happens in <strong>BAS</strong>. SAP is also expanding UI5 tooling into <strong>VS Code</strong> extensions.</div>
+      </div>
+
+      <div class="sec">Typical First-App Flow in BAS</div>
+      <div class="res-steps" style="margin-top:8px;">
+        <div class="res-step done"><div class="rs-icon">①</div><div class="rs-text"><strong>Open a Dev Space</strong> — pick the "SAP Fiori" kind</div></div>
+        <div class="res-step done"><div class="rs-icon">②</div><div class="rs-text"><strong>New Project from Template</strong> — choose SAPUI5 freestyle app</div></div>
+        <div class="res-step done"><div class="rs-icon">③</div><div class="rs-text"><strong>Pick a data source</strong> — connect an OData service (or none)</div></div>
+        <div class="res-step done"><div class="rs-icon">④</div><div class="rs-text"><strong>Run / Preview</strong> — test in the browser instantly</div></div>
+        <div class="res-step done"><div class="rs-icon">⑤</div><div class="rs-text"><strong>Deploy</strong> — push to BTP or the ABAP repository</div></div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: A new project is starting today. Which tool should the team use — Web IDE or BAS?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>Business Application Studio (BAS)</strong>. Web IDE is legacy and heading for retirement in 2028; BAS is the current, supported environment for all new UI5/Fiori development (with VS Code extensions as an emerging option).</div>
+      </div>
+    </div>
+
+    <!-- ═══ U6: Project Structure ═══ -->
+    <div class="unit" id="u6">
+      <div class="unit-tag">Unit 06 · Project Structure — Explorer</div>
+      <h2 class="unit-title">Anatomy of a UI5 App</h2>
+      <p class="unit-sub">Every UI5 app has the same core files. Click any file in the explorer to learn what it does.</p>
+
+      <div class="tree-lab">
+        <div class="tree">
+          <div class="row" onclick="treePick('root',this)"><span class="fi">📁</span><span class="fn folder">myApp/</span></div>
+          <div class="row" style="padding-left:26px;" onclick="treePick('webapp',this)"><span class="fi">📁</span><span class="fn folder">webapp/</span></div>
+          <div class="row" style="padding-left:50px;" onclick="treePick('view',this)"><span class="fi">📄</span><span class="fn">view/App.view.xml</span></div>
+          <div class="row" style="padding-left:50px;" onclick="treePick('controller',this)"><span class="fi">📄</span><span class="fn">controller/App.controller.js</span></div>
+          <div class="row" style="padding-left:50px;" onclick="treePick('manifest',this)"><span class="fi">📄</span><span class="fn">manifest.json</span></div>
+          <div class="row" style="padding-left:50px;" onclick="treePick('component',this)"><span class="fi">📄</span><span class="fn">Component.js</span></div>
+          <div class="row" style="padding-left:50px;" onclick="treePick('index',this)"><span class="fi">📄</span><span class="fn">index.html</span></div>
+          <div class="row" style="padding-left:50px;" onclick="treePick('i18n',this)"><span class="fi">📄</span><span class="fn">i18n/i18n.properties</span></div>
+        </div>
+        <div class="tree-desc" id="tree-desc">👆 Click a file above to see what it's responsible for.</div>
+      </div>
+
+      <div class="info tip">
+        <div class="ii">⭐</div>
+        <div class="it">The two files people always ask about: <strong><code>manifest.json</code></strong> is the app's "descriptor" — its ID, data sources, routing, and models all declared in one place. <strong><code>Component.js</code></strong> is the entry component that boots the app. Together they replace a lot of manual wiring.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Which file declares the app's data sources, models, and routing config?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <code>manifest.json</code> — the application descriptor. It's the single source of truth for the app ID, OData data sources, model definitions, and routing/target configuration.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U7: Bootstrap & Lifecycle ═══ -->
+    <div class="unit" id="u7">
+      <div class="unit-tag">Unit 07 · Startup — Animated</div>
+      <h2 class="unit-title">Bootstrap &amp; App Lifecycle</h2>
+      <p class="unit-sub">How does a UI5 app actually start? It begins with a <strong>bootstrap</strong> script in <code>index.html</code> that loads the framework, then the component and first view. Press play to watch it boot.</p>
+
+      <div class="svg-wrap">
+        <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="anim-btn" id="boot-play" onclick="playBoot()">▶ Boot the app</button>
+          <button class="anim-btn" id="boot-pause" onclick="pauseBoot()" style="display:none;">⏸ Pause</button>
+        </div>
+        <div class="url-display">
+          <div style="font-size:9px;color:rgba(255,255,255,.55);margin-bottom:6px;font-family:sans-serif;text-transform:uppercase;letter-spacing:.8px;">The bootstrap tag in index.html</div>
+          <div class="url-hash" style="font-size:12.5px;color:rgba(255,255,255,.85);">&lt;script id="<span style="color:#ffd966;">sap-ui-bootstrap</span>"
+  src="<span style="color:#5bbbff;">resources/sap-ui-core.js</span>"
+  data-sap-ui-<span style="color:#4fd97a;">theme</span>="sap_horizon"
+  data-sap-ui-<span style="color:#4fd97a;">libs</span>="sap.m"
+  data-sap-ui-<span style="color:#4fd97a;">on-init</span>="module:myApp/index"&gt;
+&lt;/script&gt;</div>
+        </div>
+        <div class="res-steps" id="boot-steps">
+          <div class="res-step" id="bs0"><div class="rs-icon">📜</div><div class="rs-text"><strong>index.html loads</strong> — the browser reads the bootstrap script tag</div></div>
+          <div class="res-step" id="bs1"><div class="rs-icon">⚙️</div><div class="rs-text"><strong>Core loads</strong> — <code style="color:#a9d8ff">sap-ui-core.js</code> + the declared libraries (e.g. sap.m)</div></div>
+          <div class="res-step" id="bs2"><div class="rs-icon">🎨</div><div class="rs-text"><strong>Theme applied</strong> — the Horizon theme styles everything</div></div>
+          <div class="res-step" id="bs3"><div class="rs-icon">🧩</div><div class="rs-text"><strong>Component.js runs</strong> — reads manifest.json, sets up models &amp; routing</div></div>
+          <div class="res-step" id="bs4"><div class="rs-icon">🖼️</div><div class="rs-text"><strong>Root view renders</strong> — the first View + Controller appear on screen</div></div>
+          <div class="res-step" id="bs5"><div class="rs-icon">✅</div><div class="rs-text"><strong>App is ready</strong> — user can interact; data binding is live</div></div>
+        </div>
+      </div>
+
+      <div class="sec">Controller Lifecycle Hooks</div>
+      <p style="font-size:12.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 6px;">Inside a controller you can hook into 4 moments in a view's life:</p>
+      <table class="tbl">
+        <thead><tr><th>Hook</th><th>Fires When…</th><th>Common Use</th></tr></thead>
+        <tbody>
+          <tr><td><code>onInit</code></td><td>view is created (once)</td><td>set up models, read route args</td></tr>
+          <tr><td><code>onBeforeRendering</code></td><td>just before it's drawn</td><td>last-minute prep</td></tr>
+          <tr><td><code>onAfterRendering</code></td><td>right after it's in the DOM</td><td>DOM tweaks, 3rd-party libs</td></tr>
+          <tr><td><code>onExit</code></td><td>view is destroyed</td><td>clean up timers/listeners</td></tr>
+        </tbody>
+      </table>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Where would you load initial data when a view first opens?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> In <code>onInit</code> — it runs once when the controller's view is created, making it the natural place to set up models and load the data the screen needs.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U8: Knowledge Check ═══ -->
+    <div class="unit" id="u8">
+      <div class="unit-tag">Unit 08 · Knowledge Check — Interactive</div>
+      <h2 class="unit-title">Knowledge Check</h2>
+      <p class="unit-sub">Tap the answer you think is right — you'll get instant feedback. No pressure, it's just practice.</p>
+
+      <div class="quiz">
+        <div class="quiz-q">1. Which file type holds the screen layout (the controls the user sees)?</div>
+        <button class="qopt" onclick="pick(this,false)">A. <code>App.controller.js</code></button>
+        <button class="qopt" onclick="pick(this,true)">B. <code>App.view.xml</code></button>
+        <button class="qopt" onclick="pick(this,false)">C. <code>manifest.json</code></button>
+        <div class="qfb"></div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">2. You want the UI to update automatically when data changes. What feature does that?</div>
+        <button class="qopt" onclick="pick(this,false)">A. Theming</button>
+        <button class="qopt" onclick="pick(this,true)">B. Data binding</button>
+        <button class="qopt" onclick="pick(this,false)">C. Routing</button>
+        <div class="qfb"></div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">3. Which is the current, recommended tool for new UI5 development?</div>
+        <button class="qopt" onclick="pick(this,false)">A. SAP Web IDE</button>
+        <button class="qopt" onclick="pick(this,true)">B. Business Application Studio</button>
+        <button class="qopt" onclick="pick(this,false)">C. SE80 in SAP GUI</button>
+        <div class="qfb"></div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">4. In MVC, where do event handlers (like a button press) live?</div>
+        <button class="qopt" onclick="pick(this,false)">A. In the View</button>
+        <button class="qopt" onclick="pick(this,false)">B. In the Model</button>
+        <button class="qopt" onclick="pick(this,true)">C. In the Controller</button>
+        <div class="qfb"></div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">5. Which model type connects to live SAP backend business data?</div>
+        <button class="qopt" onclick="pick(this,false)">A. JSONModel</button>
+        <button class="qopt" onclick="pick(this,true)">B. ODataModel</button>
+        <button class="qopt" onclick="pick(this,false)">C. ResourceModel</button>
+        <div class="qfb"></div>
+      </div>
+    </div>
+
+    <!-- ═══ U9: Quiz & Review ═══ -->
+    <div class="unit" id="u9">
+      <div class="unit-tag">Unit 09 · Review</div>
+      <h2 class="unit-title">Quick-Fire Revision</h2>
+      <p class="unit-sub">Five questions for tomorrow. Try to answer out loud before revealing.</p>
+
+      <div class="quiz">
+        <div class="quiz-q">Q1: What is SAPUI5, in one line?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> SAP's JavaScript framework that builds and renders the UI of Fiori apps — responsive controls, MVC, and data binding.</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q2: Name the three parts of MVC and what each does.</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>View</strong> = the screen (XML). <strong>Controller</strong> = the logic/event handlers (JS). <strong>Model</strong> = the data (JSON/OData), bound to the view.</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q3: What does data binding give you?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> An automatic link between a control and a data field — change the data and the UI updates itself (and, with two-way binding, vice versa).</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q4: Web IDE or BAS for new work — and why?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>BAS</strong>. Web IDE is legacy (sunset 2028); BAS is the current cloud IDE on BTP, built on VS Code, default for new customers.</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q5: Which file is the app descriptor, and what's in it?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <code>manifest.json</code> — holds the app ID, data sources, model definitions, and routing config in one place.</div>
+      </div>
+
+      <div class="tip-box">
+        <div class="tb-icon">🎯</div>
+        <div class="tb-text"><strong>One-line summary:</strong> SAPUI5 builds Fiori screens from ready-made <strong>controls</strong>, organised with <strong>MVC</strong>, kept in sync by <strong>data binding</strong>, written today in <strong>Business Application Studio</strong> — and every app shares the same file structure anchored by <strong>manifest.json</strong>.</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+/* ── Navigation ── */
+const TOTAL=9;
+const titles=['','What Is SAPUI5?','UI5 Controls','MVC Architecture','Data Binding','Dev Tools: Web IDE vs BAS','Project Structure','Bootstrap & App Lifecycle','Knowledge Check','Quiz & Review'];
+let cur=1;
+function go(n,btn){
+  document.querySelectorAll('.unit').forEach(u=>u.classList.remove('active'));
+  document.querySelectorAll('.rail-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('u'+n).classList.add('active');
+  if(btn)btn.classList.add('active');
+  else document.querySelectorAll('.rail-item')[n-1].classList.add('active');
+  cur=n;
+  document.getElementById('ttl').textContent=titles[n];
+  document.getElementById('prog').style.width=Math.round(n/TOTAL*100)+'%';
+  document.querySelector('.content').scrollTop=0;
+}
+function nxt(){const n=cur<TOTAL?cur+1:1;go(n,document.querySelectorAll('.rail-item')[n-1]);}
+function rev(btn){const a=btn.nextElementSibling;a.classList.toggle('on');btn.textContent=a.classList.contains('on')?'Hide Answer':'Reveal Answer';}
+
+/* ── Unit 2: Control gallery ── */
+const controls={
+  button:{
+    preview:'<button class="u5-btn">Approve</button><button class="u5-btn ghost">Reject</button>',
+    code:'<span class="tag">&lt;Button</span>\n  <span class="attr">text</span>=<span class="val">"Approve"</span>\n  <span class="attr">type</span>=<span class="val">"Emphasized"</span>\n  <span class="attr">press</span>=<span class="val">".onApprove"</span> <span class="tag">/&gt;</span>',
+    desc:'<strong>Button</strong> — triggers an action. Key property: <code style="color:#a9d8ff">text</code>. Key event: <code style="color:#a9d8ff">press</code> (wired to a controller method). The <em>type</em> property changes its emphasis (Emphasized, Transparent, Reject…).'
+  },
+  input:{
+    preview:'<input class="u5-input" placeholder="Enter employee ID…">',
+    code:'<span class="tag">&lt;Input</span>\n  <span class="attr">value</span>=<span class="val">"{/employeeId}"</span>\n  <span class="attr">placeholder</span>=<span class="val">"Enter employee ID…"</span>\n  <span class="attr">change</span>=<span class="val">".onChange"</span> <span class="tag">/&gt;</span>',
+    desc:'<strong>Input</strong> — free-text entry. Its <code style="color:#a9d8ff">value</code> is usually two-way bound to the model, so typing updates the data live. Fires <code style="color:#a9d8ff">change</code> when the user commits a new value.'
+  },
+  checkbox:{
+    preview:'<label class="u5-cb"><input type="checkbox" checked> Send me email updates</label>',
+    code:'<span class="tag">&lt;CheckBox</span>\n  <span class="attr">text</span>=<span class="val">"Send me email updates"</span>\n  <span class="attr">selected</span>=<span class="val">"{/notify}"</span> <span class="tag">/&gt;</span>',
+    desc:'<strong>CheckBox</strong> — a boolean on/off choice. The <code style="color:#a9d8ff">selected</code> property (true/false) binds to a flag in the model. Great for opt-ins and settings.'
+  },
+  switch:{
+    preview:'<div class="u5-switch" id="demoSwitch" onclick="this.classList.toggle(\'off\')"></div><div style="font-size:12px;color:#5a6a7e;">Tap to toggle</div>',
+    code:'<span class="tag">&lt;Switch</span>\n  <span class="attr">state</span>=<span class="val">"{/active}"</span>\n  <span class="attr">change</span>=<span class="val">".onToggle"</span> <span class="tag">/&gt;</span>',
+    desc:'<strong>Switch</strong> — a modern on/off toggle (like a light switch). Its <code style="color:#a9d8ff">state</code> is a boolean bound to the model. Visually clearer than a checkbox for enable/disable settings.'
+  },
+  list:{
+    preview:'<div class="u5-list"><div class="li">Annual Leave <span class="v">Approved</span></div><div class="li">Sick Leave <span class="v">Pending</span></div><div class="li">Casual Leave <span class="v">Rejected</span></div></div>',
+    code:'<span class="tag">&lt;List</span> <span class="attr">items</span>=<span class="val">"{/requests}"</span><span class="tag">&gt;</span>\n  <span class="tag">&lt;StandardListItem</span>\n    <span class="attr">title</span>=<span class="val">"{type}"</span>\n    <span class="attr">info</span>=<span class="val">"{status}"</span> <span class="tag">/&gt;</span>\n<span class="tag">&lt;/List&gt;</span>',
+    desc:'<strong>List</strong> — repeats a template row for each item. The <code style="color:#a9d8ff">items</code> aggregation binds to an array; UI5 clones the <em>StandardListItem</em> template for every entry. This is <strong>aggregation binding</strong>.'
+  },
+  object:{
+    preview:'<div class="u5-obj"><div class="oh-t">Leave Request LR001</div><div class="oh-n">Aisha Khan · 3 days</div><span class="oh-s">Approved</span></div>',
+    code:'<span class="tag">&lt;ObjectHeader</span>\n  <span class="attr">title</span>=<span class="val">"{/id}"</span>\n  <span class="attr">number</span>=<span class="val">"{/days}"</span>\n  <span class="attr">numberUnit</span>=<span class="val">"days"</span> <span class="tag">/&gt;</span>',
+    desc:'<strong>ObjectHeader</strong> — a rich header showing a business object\'s key facts (title, number, status). Common at the top of Fiori detail pages. Every field is bound to the model.'
+  }
+};
+function ctrlPick(key,el){
+  document.querySelectorAll('.ctrl-tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  const c=controls[key];
+  const prev=document.getElementById('ctrl-preview');
+  prev.style.animation='none';prev.offsetHeight;prev.style.animation='popIn .3s ease';
+  prev.innerHTML=c.preview;
+  document.getElementById('ctrl-code').innerHTML=c.code;
+  document.getElementById('ctrl-desc').innerHTML=c.desc;
+}
+
+/* ── Unit 3: MVC animation (with pause) ── */
+const mvcSteps=[
+  {box:'mvc-view',a:'mvc-a1',l:'mvc-l1',msg:'<strong>1. User acts in the View</strong> — e.g. taps an "Approve" button. The View fires the <code>press</code> event.'},
+  {box:'mvc-ctrl',a:'mvc-a2',l:'mvc-l2',msg:'<strong>2. Controller handles it</strong> — the <code>onApprove</code> method runs and updates the data in the Model.'},
+  {box:'mvc-model',a:'mvc-a3',l:'mvc-l3',msg:'<strong>3. Model changes → binding refreshes the View</strong> — because the View is bound to the Model, it updates automatically. No manual DOM code.'}
+];
+let mvcTimer=null,mvcIdx=0,mvcPaused=false,mvcRunning=false;
+function mvcReset(){
+  clearTimeout(mvcTimer);
+  mvcSteps.forEach(s=>{
+    document.getElementById(s.a).setAttribute('opacity','.15');
+    document.getElementById(s.a).style.animation='none';
+    document.getElementById(s.l).setAttribute('opacity','0');
+    document.getElementById(s.box).style.filter='none';
+  });
+}
+function mvcStep(){
+  if(mvcPaused)return;
+  if(mvcIdx>0){const p=mvcSteps[mvcIdx-1];document.getElementById(p.a).setAttribute('opacity','.15');document.getElementById(p.a).style.animation='none';document.getElementById(p.l).setAttribute('opacity','0');document.getElementById(p.box).style.filter='none';}
+  if(mvcIdx<mvcSteps.length){
+    const s=mvcSteps[mvcIdx];
+    const line=document.getElementById(s.a);
+    line.setAttribute('opacity','1');line.style.animation='flowR .6s linear infinite';
+    document.getElementById(s.l).setAttribute('opacity','1');
+    document.getElementById(s.box).style.filter='drop-shadow(0 0 10px #0070f2)';
+    document.getElementById('mvc-info').innerHTML=s.msg;
+    mvcIdx++;
+    mvcTimer=setTimeout(mvcStep,1800);
+  } else {
+    document.getElementById('mvc-info').innerHTML='✅ Full round-trip. That\'s MVC: the View shows, the Controller decides, the Model holds — and binding keeps them in sync.';
+    mvcDone();
+  }
+}
+function mvcDone(){
+  mvcRunning=false;mvcPaused=false;
+  const p=document.getElementById('mvc-play');p.style.display='';p.innerHTML='▶ Replay the MVC flow';
+  document.getElementById('mvc-pause').style.display='none';
+}
+function playMvc(){
+  if(mvcRunning&&mvcPaused){mvcPaused=false;document.getElementById('mvc-play').style.display='none';document.getElementById('mvc-pause').style.display='';mvcStep();return;}
+  mvcReset();mvcIdx=0;mvcPaused=false;mvcRunning=true;
+  document.getElementById('mvc-play').style.display='none';
+  const pb=document.getElementById('mvc-pause');pb.style.display='';pb.innerHTML='⏸ Pause';
+  mvcStep();
+}
+function pauseMvc(){
+  if(!mvcRunning)return;
+  mvcPaused=true;clearTimeout(mvcTimer);
+  document.getElementById('mvc-pause').style.display='none';
+  const p=document.getElementById('mvc-play');p.style.display='';p.innerHTML='▶ Resume';
+}
+
+/* ── Unit 4: Data binding live demo ── */
+function bindUpdate(){
+  const name=document.getElementById('bind-name').value||'…';
+  const role=document.getElementById('bind-role').value||'…';
+  const live=document.getElementById('bind-live');
+  document.getElementById('bv-name').textContent=name;
+  document.getElementById('bv-role').textContent=role;
+  live.classList.remove('bind-flash');void live.offsetWidth;live.classList.add('bind-flash');
+}
+
+/* ── Unit 6: Project structure explorer ── */
+const treeInfo={
+  root:'<strong>myApp/</strong> — the project root. Contains the <code>webapp/</code> folder plus build/config files (like <code>ui5.yaml</code> and <code>package.json</code>).',
+  webapp:'<strong>webapp/</strong> — the heart of the app. Everything the browser runs lives here: views, controllers, the manifest, the component, and assets.',
+  view:'<strong>App.view.xml</strong> — a <em>View</em>. Declares the screen layout and controls in XML. No logic here — purely what the user sees.',
+  controller:'<strong>App.controller.js</strong> — the <em>Controller</em> for that view. Holds event handlers (<code>onPress</code>…) and lifecycle hooks (<code>onInit</code>). This is where behaviour lives.',
+  manifest:'<strong>manifest.json</strong> — the <em>application descriptor</em>. One file declaring the app ID, data sources, models, and routing. The most important config file.',
+  component:'<strong>Component.js</strong> — the app\'s entry component. It boots the app, reads <code>manifest.json</code>, and initialises models &amp; routing.',
+  index:'<strong>index.html</strong> — the web page that hosts the app. Contains the <em>bootstrap</em> script that loads the UI5 framework and starts the component.',
+  i18n:'<strong>i18n.properties</strong> — translatable texts (labels, titles). Bound with <code>{i18n&gt;key}</code> so the app can switch languages without code changes.'
+};
+function treePick(key,el){
+  document.querySelectorAll('.tree .row').forEach(r=>r.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('tree-desc').innerHTML=treeInfo[key];
+}
+
+/* ── Unit 7: Bootstrap animation (with pause) ── */
+const bootSteps=['bs0','bs1','bs2','bs3','bs4','bs5'];
+let bootTimer=null,bootIdx=0,bootPaused=false,bootRunning=false;
+function bootReset(){clearTimeout(bootTimer);bootSteps.forEach(id=>{const e=document.getElementById(id);e.classList.remove('lit','done');});}
+function bootStep(){
+  if(bootPaused)return;
+  if(bootIdx>0){const p=document.getElementById(bootSteps[bootIdx-1]);p.classList.remove('lit');p.classList.add('done');}
+  if(bootIdx<bootSteps.length){
+    document.getElementById(bootSteps[bootIdx]).classList.add('lit');
+    bootIdx++;
+    bootTimer=setTimeout(bootStep,900);
+  } else {bootDone();}
+}
+function bootDone(){
+  bootRunning=false;bootPaused=false;
+  const p=document.getElementById('boot-play');p.style.display='';p.innerHTML='▶ Boot again';
+  document.getElementById('boot-pause').style.display='none';
+}
+function playBoot(){
+  if(bootRunning&&bootPaused){bootPaused=false;document.getElementById('boot-play').style.display='none';document.getElementById('boot-pause').style.display='';bootStep();return;}
+  bootReset();bootIdx=0;bootPaused=false;bootRunning=true;
+  document.getElementById('boot-play').style.display='none';
+  const pb=document.getElementById('boot-pause');pb.style.display='';pb.innerHTML='⏸ Pause';
+  bootStep();
+}
+function pauseBoot(){
+  if(!bootRunning)return;
+  bootPaused=true;clearTimeout(bootTimer);
+  document.getElementById('boot-pause').style.display='none';
+  const p=document.getElementById('boot-play');p.style.display='';p.innerHTML='▶ Resume';
+}
+
+/* ── Unit 8: knowledge check ── */
+function pick(btn,correct){
+  const quiz=btn.closest('.quiz');
+  if(quiz.dataset.done==='1')return;
+  quiz.dataset.done='1';
+  const fb=quiz.querySelector('.qfb');
+  if(correct){
+    btn.classList.add('correct');
+    fb.innerHTML='<span style="color:#107e3e;font-weight:700;">✓ Correct!</span>';
+  } else {
+    btn.classList.add('wrong');
+    // reveal the correct one
+    quiz.querySelectorAll('.qopt').forEach(o=>{if(o.getAttribute('onclick').includes('true'))o.classList.add('correct');});
+    fb.innerHTML='<span style="color:#bb0000;font-weight:700;">✗ Not quite</span> — the highlighted option is correct.';
+  }
+  fb.classList.add('on');
+}
+
+/* ── Init defaults ── */
+ctrlPick('button',document.getElementById('ct-button'));
+treePick('manifest',document.querySelectorAll('.tree .row')[4]);
+</script>
+</body>
+</html>
