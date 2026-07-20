@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Customizing a UI5 App — Beginner's Interactive Guide</title>
+<style>
+:root{
+  --sap-blue:#0070f2;--sap-dark:#003169;--sap-green:#107e3e;
+  --sap-orange:#e9730c;--sap-red:#bb0000;--sap-purple:#6a2c8c;
+  --bg:#f5f7fa;--line:#e0e6ef;--ink:#1d2d44;--ink-dim:#5a6a7e;
+  --accent-soft:rgba(0,112,242,.08);
+  --edit:#5b21b6;--edit-bg:#ede9fe;--edit-bd:#c4b5fd;
+  --some:#0f766e;--some-bg:#d9f2ef;--some-bd:#99e0d8;
+  --leave:#6b7280;--leave-bg:#eef0f2;--leave-bd:#d5dae0;
+}
+*,*::before,*::after{box-sizing:border-box;}
+html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);}
+.app{display:grid;grid-template-columns:280px 1fr;height:100vh;overflow:hidden;}
+.rail{background:var(--sap-dark);display:flex;flex-direction:column;overflow:hidden;}
+.rail-head{padding:22px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1);}
+.rail-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;margin-bottom:10px;text-transform:uppercase;}
+.rail-head h1{margin:0;font-size:15px;font-weight:700;color:#fff;line-height:1.35;}
+.rail-head p{margin:5px 0 0;font-size:11px;color:rgba(255,255,255,.45);}
+.rail-list{flex:1;overflow-y:auto;padding:10px 8px;}
+.rail-list::-webkit-scrollbar{width:4px;}
+.rail-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);}
+.rail-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;font-size:12.5px;color:rgba(255,255,255,.5);cursor:pointer;margin-bottom:2px;border-left:3px solid transparent;transition:all .18s;user-select:none;}
+.rail-item .num{font-size:10px;font-weight:700;color:rgba(255,255,255,.25);min-width:18px;}
+.rail-item .lbl{flex:1;line-height:1.3;}
+.rail-item .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.12);flex-shrink:0;}
+.rail-item:hover{background:rgba(255,255,255,.07);color:#fff;}
+.rail-item.active{background:rgba(0,112,242,.28);color:#fff;border-left-color:var(--sap-blue);}
+.rail-item.active .num{color:#5bbbff;}
+.rail-item.active .dot{background:#5bbbff;}
+.rail-footer{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:10.5px;color:rgba(255,255,255,.3);}
+.rail-footer span{color:rgba(255,255,255,.6);font-weight:600;}
+.main{display:flex;flex-direction:column;overflow:hidden;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:54px;background:#fff;border-bottom:1px solid var(--line);flex-shrink:0;}
+.topbar .breadcrumb{font-size:12px;color:var(--ink-dim);}
+.topbar .breadcrumb strong{color:var(--ink);font-weight:600;}
+.topbar .pill{font-size:11px;padding:4px 14px;border-radius:20px;background:#e8f4fd;color:var(--sap-blue);font-weight:600;cursor:pointer;border:1px solid #c2dff7;transition:all .18s;}
+.topbar .pill:hover{background:var(--sap-blue);color:#fff;}
+.prog-bar{height:3px;background:var(--line);flex-shrink:0;}
+.prog-fill{height:100%;background:var(--sap-blue);transition:width .4s ease;}
+.content{flex:1;overflow-y:auto;padding:26px 32px 60px;}
+.content::-webkit-scrollbar{width:6px;}
+.content::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+.unit{display:none;}
+.unit.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.unit-tag{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--sap-blue);margin-bottom:8px;}
+.unit-title{font-size:22px;font-weight:700;color:var(--ink);margin:0 0 6px;}
+.unit-sub{font-size:13.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 20px;}
+.sec{font-size:14.5px;font-weight:700;color:var(--sap-dark);margin:22px 0 10px;display:flex;align-items:center;gap:8px;}
+.sec::before{content:'';display:inline-block;width:4px;height:16px;background:var(--sap-blue);border-radius:2px;}
+.info{display:flex;gap:12px;padding:13px 16px;border-radius:10px;margin:12px 0;}
+.info.tip{background:#fff8e6;border:1.5px solid #f5c842;}
+.info.note{background:#e8f4fd;border:1.5px solid #c2dff7;}
+.info.green{background:#e8f5ee;border:1.5px solid #b5dcc5;}
+.info.red{background:#fdecea;border:1.5px solid #f3b0a8;}
+.info .ii{font-size:18px;flex-shrink:0;}
+.info .it{font-size:12.5px;line-height:1.65;}
+.info.tip .it{color:#6b4f00;}
+.info.note .it{color:#002060;}
+.info.green .it{color:#0a3018;}
+.info.red .it{color:#6b0f07;}
+.info .it code{background:rgba(0,0,0,.08);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.tbl{width:100%;border-collapse:collapse;margin:12px 0;font-size:12.5px;}
+.tbl th{background:var(--sap-dark);color:#fff;padding:9px 13px;text-align:left;font-size:11px;font-weight:700;}
+.tbl th:first-child{border-radius:7px 0 0 0;}.tbl th:last-child{border-radius:0 7px 0 0;}
+.tbl td{padding:9px 13px;border-bottom:1px solid var(--line);vertical-align:top;}
+.tbl tr:hover td{background:var(--accent-soft);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.quiz{background:#f0f7ff;border:1.5px solid #c2dff7;border-radius:10px;padding:15px 18px;margin:12px 0;}
+.quiz-q{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:10px;}
+.rev-btn{background:var(--sap-blue);color:#fff;border:none;padding:7px 16px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s;}
+.rev-btn:hover{background:var(--sap-dark);}
+.quiz-a{display:none;margin-top:11px;font-size:13px;color:var(--ink);line-height:1.65;padding-top:10px;border-top:1px solid #c2dff7;}
+.quiz-a.on{display:block;}
+.quiz-a code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.chk{color:var(--sap-green);font-weight:700;}
+.tip-box{display:flex;gap:12px;padding:16px 18px;background:linear-gradient(135deg,#003169,#0050b3);border-radius:12px;margin:18px 0;color:#fff;}
+.tb-icon{font-size:22px;flex-shrink:0;}
+.tb-text{font-size:13px;line-height:1.7;}
+.tb-text strong{color:#ffde6a;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0;}
+@media(max-width:760px){.two-col{grid-template-columns:1fr;}}
+code{font-family:'JetBrains Mono',Consolas,monospace;}
+.mono-block{background:#0d1520;border-radius:10px;padding:14px 16px;margin:12px 0;font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.82);line-height:1.75;border:1.5px solid #1e3050;overflow-x:auto;white-space:pre;}
+.mono-block .tag{color:#5bbbff;}.mono-block .attr{color:#ffaa44;}.mono-block .val{color:#4fd97a;}.mono-block .cmt{color:rgba(255,255,255,.4);}.mono-block .kw{color:#ff9de2;}.mono-block .fn{color:#ffd966;}.mono-block .key{color:#5bbbff;}
+
+.anim-btn{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.2);padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;margin-bottom:12px;}
+.anim-btn:hover{background:rgba(0,112,242,.4);border-color:#0070f2;}
+.svg-wrap{background:#0d1a2e;border-radius:14px;padding:20px;margin:16px 0;overflow:hidden;border:1.5px solid #1e3050;}
+
+/* ── Folder map (Unit 2) ── */
+.fmap{margin:14px 0;}
+.fmap-root{display:inline-flex;align-items:baseline;gap:10px;background:var(--leave-bg);border:1.5px solid var(--leave-bd);border-radius:10px;padding:9px 16px;margin-bottom:8px;}
+.fmap-root .fr-n{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:14px;color:var(--ink);}
+.fmap-root .fr-d{font-size:11.5px;color:var(--ink-dim);}
+.fmap-rows{display:flex;flex-direction:column;gap:6px;padding-left:22px;}
+.frow{display:flex;align-items:center;gap:12px;border-radius:9px;padding:10px 15px;cursor:pointer;transition:all .16s;border:1.5px solid;}
+.frow:hover{transform:translateX(3px);}
+.frow .fn{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;min-width:120px;}
+.frow .fd{font-size:12px;flex:1;}
+.frow .fb{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:2px 9px;border-radius:11px;white-space:nowrap;}
+.frow.edit{background:var(--edit-bg);border-color:var(--edit-bd);}
+.frow.edit .fn{color:var(--edit);}.frow.edit .fd{color:#4c1d95;}.frow.edit .fb{background:#ddd6fe;color:var(--edit);}
+.frow.some{background:var(--some-bg);border-color:var(--some-bd);}
+.frow.some .fn{color:var(--some);}.frow.some .fd{color:#134e4a;}.frow.some .fb{background:#bfeae4;color:var(--some);}
+.frow.leave{background:var(--leave-bg);border-color:var(--leave-bd);}
+.frow.leave .fn{color:#374151;}.frow.leave .fd{color:var(--leave);}.frow.leave .fb{background:#dde1e6;color:var(--leave);}
+.frow.sub{margin-left:26px;}
+.fmap-legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;}
+.fmap-legend span{display:inline-flex;align-items:center;gap:6px;color:var(--ink-dim);}
+.fmap-legend .sw{width:12px;height:12px;border-radius:3px;border:1.5px solid;}
+.sw.edit{background:var(--edit-bg);border-color:var(--edit);}
+.sw.some{background:var(--some-bg);border-color:var(--some);}
+.sw.leave{background:var(--leave-bg);border-color:var(--leave);}
+.fmap-detail{margin-top:14px;background:#0d1a2e;border:1.5px solid #1e3050;border-radius:10px;padding:14px 16px;font-size:12.5px;color:#e8eef6;line-height:1.7;min-height:60px;transition:all .3s;}
+.fmap-detail strong{color:#5bbbff;}
+.fmap-detail code{background:rgba(0,0,0,.35);padding:1px 6px;border-radius:4px;color:#4fd97a;}
+
+/* ── Change router (Unit 3) ── */
+.router{display:flex;flex-direction:column;gap:10px;margin:14px 0;}
+.rr{display:grid;grid-template-columns:1fr 28px 1fr 28px 1fr;align-items:stretch;gap:0;cursor:pointer;}
+@media(max-width:760px){.rr{grid-template-columns:1fr;gap:6px;}.rr .rarrow{display:none;}}
+.rr-cell{border-radius:10px;padding:12px 14px;border:1.5px solid;transition:all .16s;}
+.rr-want{background:var(--edit-bg);border-color:var(--edit-bd);}
+.rr-want .t{font-size:13px;font-weight:700;color:var(--edit);}
+.rr-want .s{font-size:11px;color:#6d28d9;margin-top:2px;}
+.rr-file{background:var(--some-bg);border-color:var(--some-bd);}
+.rr-file .t{font-size:13px;font-weight:700;color:var(--some);font-family:'JetBrains Mono',monospace;}
+.rr-file .s{font-size:11px;color:#0f766e;margin-top:2px;}
+.rr-where{background:var(--leave-bg);border-color:var(--leave-bd);}
+.rr-where .t{font-size:13px;font-weight:700;color:#374151;font-family:'JetBrains Mono',monospace;}
+.rr-where .s{font-size:11px;color:var(--leave);margin-top:2px;}
+.rarrow{display:flex;align-items:center;justify-content:center;color:#9aa7b8;font-size:16px;}
+.rr:hover .rr-cell{border-color:var(--sap-blue);box-shadow:0 2px 10px rgba(0,112,242,.1);}
+.rr-headrow{display:grid;grid-template-columns:1fr 28px 1fr 28px 1fr;gap:0;margin-bottom:2px;}
+@media(max-width:760px){.rr-headrow{display:none;}}
+.rr-headrow div{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-dim);padding:0 14px;}
+
+/* ── Button flow (Unit 4) & pipeline (Unit 5) ── */
+.res-steps{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+.res-step{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);font-size:12px;color:rgba(255,255,255,.72);transition:all .5s ease;}
+.res-step.lit{background:rgba(0,112,242,.2);border-color:#0070f2;color:#fff;}
+.res-step.done{background:rgba(16,126,62,.2);border-color:#4fd97a;color:rgba(255,255,255,.85);}
+.res-step .rs-icon{font-size:16px;flex-shrink:0;}
+.res-step .rs-text{flex:1;}
+.res-step .rs-text strong{color:#5bbbff;}
+.res-step.lit .rs-text strong{color:#a9d8ff;}
+.res-step .rs-file{font-family:'JetBrains Mono',monospace;font-size:10px;color:#ffd966;margin-left:auto;flex-shrink:0;}
+
+.flow-boxes{display:flex;flex-direction:column;gap:0;align-items:center;margin-top:10px;}
+.flow-b{width:100%;max-width:440px;border-radius:10px;padding:13px 16px;border:1.5px solid;transition:all .4s ease;opacity:.4;}
+.flow-b.lit{opacity:1;box-shadow:0 0 18px rgba(0,112,242,.3);}
+.flow-b.view{background:var(--edit-bg);border-color:var(--edit-bd);}
+.flow-b.ctrl{background:var(--some-bg);border-color:var(--some-bd);}
+.flow-b.screen{background:#fff8e6;border-color:#f5c842;}
+.flow-b .fb-t{font-size:12.5px;font-weight:700;margin-bottom:5px;}
+.flow-b.view .fb-t{color:var(--edit);}.flow-b.ctrl .fb-t{color:var(--some);}.flow-b.screen .fb-t{color:#8a6d00;}
+.flow-b .fb-c{font-family:'JetBrains Mono',monospace;font-size:11px;color:#32363a;line-height:1.6;white-space:pre-wrap;}
+.flow-b.screen .fb-c{font-family:inherit;font-weight:600;}
+.flow-conn{width:2px;height:22px;background:#cdd7e3;transition:all .4s;}
+.flow-conn.lit{background:var(--sap-blue);box-shadow:0 0 6px rgba(0,112,242,.4);}
+.flow-conn-lbl{font-size:10px;color:var(--ink-dim);padding:3px 0;}
+
+/* pipeline horizontal */
+.pipe{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin-top:10px;}
+.pipe-node{flex:1;min-width:92px;border-radius:10px;padding:12px 8px;text-align:center;border:1.5px solid;transition:all .4s ease;opacity:.4;}
+.pipe-node.lit{opacity:1;transform:translateY(-3px);box-shadow:0 4px 14px rgba(0,0,0,.12);}
+.pipe-node .pn-t{font-size:12px;font-weight:700;}
+.pipe-node .pn-s{font-size:9.5px;margin-top:2px;}
+.pipe-node.data{background:#fdece4;border-color:#f3b99a;}.pipe-node.data .pn-t{color:#9a4a12;}.pipe-node.data .pn-s{color:#b5652a;}
+.pipe-node.mock{background:var(--leave-bg);border-color:var(--leave-bd);}.pipe-node.mock .pn-t{color:#374151;}.pipe-node.mock .pn-s{color:var(--leave);}
+.pipe-node.model{background:#fdece4;border-color:#f3b99a;}.pipe-node.model .pn-t{color:#9a4a12;}.pipe-node.model .pn-s{color:#b5652a;}
+.pipe-node.view{background:var(--edit-bg);border-color:var(--edit-bd);}.pipe-node.view .pn-t{color:var(--edit);}.pipe-node.view .pn-s{color:#6d28d9;}
+.pipe-node.screen{background:var(--some-bg);border-color:var(--some-bd);}.pipe-node.screen .pn-t{color:var(--some);}.pipe-node.screen .pn-s{color:#0f766e;}
+.pipe-arrow{display:flex;align-items:center;color:#9aa7b8;font-size:15px;padding:0 3px;}
+@media(max-width:640px){.pipe{flex-direction:column;}.pipe-arrow{transform:rotate(90deg);align-self:center;}}
+
+/* ── Binding decoder (Unit 6) ── */
+.bind-lab{background:#0d1a2e;border-radius:14px;padding:20px;margin:14px 0;border:1.5px solid #1e3050;}
+.bind-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.bind-chip{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;padding:8px 13px;border-radius:8px;cursor:pointer;transition:all .18s;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.14);color:rgba(255,255,255,.8);}
+.bind-chip:hover{border-color:#0070f2;color:#fff;}
+.bind-chip.on{background:rgba(0,112,242,.28);border-color:#0070f2;color:#fff;}
+.bind-out{background:#0d1520;border-radius:10px;padding:16px;border:1.5px solid #1e3050;}
+.bind-expr{font-family:'JetBrains Mono',monospace;font-size:16px;color:#4fd97a;margin-bottom:14px;word-break:break-all;}
+.bind-expr .model{color:#ffd966;}.bind-expr .path{color:#5bbbff;}
+.bind-parts{display:flex;flex-direction:column;gap:8px;}
+.bind-part{display:flex;gap:10px;font-size:12.5px;color:#e8eef6;line-height:1.55;}
+.bind-part .bp-k{font-family:'JetBrains Mono',monospace;font-weight:700;flex-shrink:0;min-width:70px;}
+.bind-part.model .bp-k{color:#ffd966;}.bind-part.path .bp-k{color:#5bbbff;}.bind-part.file .bp-k{color:#4fd97a;}
+
+/* ── Error decoder (Unit 7) ── */
+.err-lab{display:flex;flex-direction:column;gap:10px;margin:14px 0;}
+.err-card{border:1.5px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;cursor:pointer;transition:all .16s;}
+.err-card:hover{box-shadow:0 2px 12px rgba(187,0,0,.1);border-color:#f3b0a8;}
+.err-msg{background:#2b0b09;color:#ff9d94;font-family:'JetBrains Mono',monospace;font-size:12px;padding:11px 14px;display:flex;align-items:center;gap:8px;}
+.err-msg::before{content:'✕';color:#ff5c4d;font-weight:800;}
+.err-fix{padding:12px 14px;font-size:12.5px;color:var(--ink);line-height:1.6;display:none;background:#fff;}
+.err-fix.on{display:block;}
+.err-fix strong{color:var(--sap-red);}
+.err-fix code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.err-hint{font-size:11px;color:var(--ink-dim);padding:0 14px 10px;}
+
+/* ── Checklist (Unit 8) ── */
+.check{display:flex;flex-direction:column;gap:8px;margin:14px 0;}
+.check-item{display:flex;align-items:flex-start;gap:12px;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:12px 15px;cursor:pointer;transition:all .16s;user-select:none;}
+.check-item:hover{border-color:var(--sap-blue);}
+.check-box{flex-shrink:0;width:22px;height:22px;border-radius:6px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;transition:all .16s;}
+.check-item.done .check-box{background:var(--sap-green);border-color:var(--sap-green);}
+.check-item.done .ci-t{text-decoration:line-through;color:var(--ink-dim);}
+.ci-t{font-size:13px;color:var(--ink);line-height:1.5;}
+.ci-t strong{color:var(--sap-dark);}
+.check-progress{font-size:12px;color:var(--ink-dim);margin-top:6px;font-weight:600;}
+
+.rec-order{counter-reset:rc;display:flex;flex-direction:column;gap:8px;margin:12px 0;}
+.rec-step{display:flex;align-items:center;gap:13px;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:11px 15px;}
+.rec-step::before{counter-increment:rc;content:counter(rc);flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--sap-blue);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.rec-step .rc-t{font-size:13px;color:#000;line-height:1.5;}
+.rec-step .rc-t strong{color:var(--sap-dark);}
+.rec-step .rc-lvl{margin-left:auto;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 9px;border-radius:11px;background:#e8f5ee;color:var(--sap-green);white-space:nowrap;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- RAIL -->
+<div class="rail">
+  <div class="rail-head">
+    <div class="rail-badge">🛠️ Hands-On</div>
+    <h1>Customizing a UI5 App</h1>
+    <p>Shopping Cart demo · Beginner's Guide</p>
+  </div>
+  <div class="rail-list">
+    <div class="rail-item active" onclick="go(1,this)"><span class="num">01</span><span class="lbl">Start Here &amp; Run the App</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(2,this)"><span class="num">02</span><span class="lbl">The webapp/ Folder Map</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(3,this)"><span class="num">03</span><span class="lbl">"I Want to Change…" Router</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(4,this)"><span class="num">04</span><span class="lbl">Add a Button (Animated)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(5,this)"><span class="num">05</span><span class="lbl">Where Data Lives (Pipeline)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(6,this)"><span class="num">06</span><span class="lbl">Reading Bindings {…}</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(7,this)"><span class="num">07</span><span class="lbl">Debugging &amp; Errors</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(8,this)"><span class="num">08</span><span class="lbl">Safety Habits Checklist</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(9,this)"><span class="num">09</span><span class="lbl">Quiz &amp; Review</span><span class="dot"></span></div>
+  </div>
+  <div class="rail-footer"><span>SAPUI5 · Demo Cart</span> · Practice Guide</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="breadcrumb">Customizing a UI5 App &rsaquo; <strong id="ttl">Start Here</strong></div>
+    <button class="pill" onclick="nxt()">Next →</button>
+  </div>
+  <div class="prog-bar"><div class="prog-fill" id="prog" style="width:11%"></div></div>
+  <div class="content">
+
+    <!-- ═══ U1: Start Here ═══ -->
+    <div class="unit active" id="u1">
+      <div class="unit-tag">Unit 01 · Setup</div>
+      <h2 class="unit-title">Start Here &amp; Run the App</h2>
+      <p class="unit-sub">Before changing anything, get the app running so you can see every edit live. You'll work entirely inside one folder — <code>webapp/</code> — and refresh the browser after each save.</p>
+
+      <div class="sec">Step 0 — Run it with Mock Data</div>
+      <p style="font-size:12.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 6px;">Open a terminal in the project folder and run:</p>
+      <div class="mono-block"><span class="cmt"># starts the app with fake (mock) data — no real server needed</span>
+npm run start-mock</div>
+      <p style="font-size:12.5px;color:var(--ink-dim);line-height:1.65;margin:6px 0 0;">This opens the app in your browser. <strong>Keep it running</strong> — every time you save a file, refresh the browser to see the change.</p>
+
+      <div class="info green">
+        <div class="ii">🏅</div>
+        <div class="it"><strong>Golden rule for a beginner:</strong> text goes in <code>i18n</code>, not in the XML. In the views you'll see things like <code>text="{i18n&gt;welcomeHeadline}"</code> — that <code>{i18n&gt;…}</code> means "look up this word in the i18n file." So to change wording, you edit i18n — not the screen.</div>
+      </div>
+
+      <div class="sec">The One-Loop Workflow</div>
+      <div class="pipe" style="margin-top:6px;">
+        <div class="pipe-node data lit"><div class="pn-t">Edit</div><div class="pn-s">one file in webapp/</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node model lit"><div class="pn-t">Save</div><div class="pn-s">Ctrl+S</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node view lit"><div class="pn-t">Refresh</div><div class="pn-s">the browser</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node screen lit"><div class="pn-t">See it</div><div class="pn-s">change is live</div></div>
+      </div>
+
+      <div class="info tip">
+        <div class="ii">🔁</div>
+        <div class="it"><strong>Change one thing, then refresh.</strong> Never make five edits at once — if the app breaks, you won't know which edit caused it. Small steps are the fastest way to learn.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: You want to rename the app title. Which file do you edit — the view XML or i18n?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>i18n</strong> (<code>webapp/i18n/i18n.properties</code>). The view only shows <code>{i18n&gt;appTitle}</code> — a pointer. The actual word lives in i18n, so changing it there updates every screen that uses that key.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U2: Folder Map ═══ -->
+    <div class="unit" id="u2">
+      <div class="unit-tag">Unit 02 · Orientation — Interactive</div>
+      <h2 class="unit-title">The webapp/ Folder Map</h2>
+      <p class="unit-sub">Everything you edit lives inside <code>webapp/</code>. The folders are colour-coded by how often a beginner touches them. Click any folder to learn what it holds and when to edit it.</p>
+
+      <div class="fmap">
+        <div class="fmap-root"><span class="fr-n">webapp/</span><span class="fr-d">the whole app</span></div>
+        <div class="fmap-rows">
+          <div class="frow leave" onclick="fmapPick('index',this)"><span class="fn">index.html</span><span class="fd">entry page</span><span class="fb">leave it</span></div>
+          <div class="frow leave" onclick="fmapPick('component',this)"><span class="fn">Component.js</span><span class="fd">startup</span><span class="fb">leave it</span></div>
+          <div class="frow leave" onclick="fmapPick('manifest',this)"><span class="fn">manifest.json</span><span class="fd">blueprint / config</span><span class="fb">advanced</span></div>
+          <div class="frow edit" onclick="fmapPick('view',this)"><span class="fn">view/</span><span class="fd">screens (XML) — what appears where</span><span class="fb">edit</span></div>
+          <div class="frow some" onclick="fmapPick('controller',this)"><span class="fn">controller/</span><span class="fd">logic (JS) — what happens on click</span><span class="fb">sometimes</span></div>
+          <div class="frow some" onclick="fmapPick('model',this)"><span class="fn">model/</span><span class="fd">formatters, cart</span><span class="fb">sometimes</span></div>
+          <div class="frow edit" onclick="fmapPick('i18n',this)"><span class="fn">i18n/</span><span class="fd">all texts (labels, titles, buttons)</span><span class="fb">edit</span></div>
+          <div class="frow edit" onclick="fmapPick('css',this)"><span class="fn">css/</span><span class="fd">styling — colors, spacing</span><span class="fb">edit</span></div>
+          <div class="frow edit" onclick="fmapPick('img',this)"><span class="fn">img/</span><span class="fd">app images</span><span class="fb">edit</span></div>
+          <div class="frow leave" onclick="fmapPick('local',this)"><span class="fn">localService/</span><span class="fd">fake backend</span><span class="fb">leave it</span></div>
+          <div class="frow edit sub" onclick="fmapPick('mock',this)"><span class="fn">mockdata/</span><span class="fd">your data + images</span><span class="fb">edit</span></div>
+        </div>
+        <div class="fmap-legend">
+          <span><span class="sw edit"></span> edit often</span>
+          <span><span class="sw some"></span> edit sometimes</span>
+          <span><span class="sw leave"></span> usually leave</span>
+        </div>
+        <div class="fmap-detail" id="fmap-detail">👆 Click a folder or file above to see what it holds and when you'd edit it.</div>
+      </div>
+
+      <div class="info red">
+        <div class="ii">🚫</div>
+        <div class="it"><strong>Never edit <code>node_modules/</code>.</strong> That's the framework itself. Only edit inside <code>webapp/</code>. If you ever change something there by accident, it can break the whole app in confusing ways.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: You want to change the wording of a button. Which folder?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <code>i18n/</code> — all user-facing text lives there. The view just references the key; the words themselves are in <code>i18n.properties</code>.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U3: Change Router ═══ -->
+    <div class="unit" id="u3">
+      <div class="unit-tag">Unit 03 · Cheat-Sheet</div>
+      <h2 class="unit-title">"I Want to Change…" Router</h2>
+      <p class="unit-sub">The fastest way to work: decide <em>what</em> you want to change, and this tells you <em>which file</em> to open and <em>where</em> it lives. Read each row left → right.</p>
+
+      <div class="rr-headrow"><div>I want to change…</div><div></div><div>Edit this file</div><div></div><div>Find it here</div></div>
+      <div class="router">
+        <div class="rr">
+          <div class="rr-cell rr-want"><div class="t">Titles &amp; texts</div><div class="s">app name, labels</div></div>
+          <div class="rarrow">→</div>
+          <div class="rr-cell rr-file"><div class="t">i18n.properties</div><div class="s">key = value texts</div></div>
+          <div class="rarrow">→</div>
+          <div class="rr-cell rr-where"><div class="t">i18n/</div><div class="s">in webapp</div></div>
+        </div>
+        <div class="rr">
+          <div class="rr-cell rr-want"><div class="t">Colors &amp; logo</div><div class="s">styling, banners</div></div>
+          <div class="rarrow">→</div>
+          <div class="rr-cell rr-file"><div class="t">style.css</div><div class="s">+ img/ files</div></div>
+          <div class="rarrow">→</div>
+          <div class="rr-cell rr-where"><div class="t">css/ + img/</div><div class="s">in webapp</div></div>
+        </div>
+        <div class="rr">
+          <div class="rr-cell rr-want"><div class="t">Products &amp; images</div><div class="s">catalog data</div></div>
+          <div class="rarrow">→</div>
+          <div class="rr-cell rr-file"><div class="t">Products.json</div><div class="s">+ images/ folder</div></div>
+          <div class="rarrow">→</div>
+          <div class="rr-cell rr-where"><div class="t">mockdata/</div><div class="s">in localService</div></div>
+        </div>
+        <div class="rr">
+          <div class="rr-cell rr-want"><div class="t">Screens &amp; buttons</div><div class="s">layout, actions</div></div>
+          <div class="rarrow">→</div>
+          <div class="rr-cell rr-file"><div class="t">view + controller</div><div class="s">*.view.xml / *.js</div></div>
+          <div class="rarrow">→</div>
+          <div class="rr-cell rr-where"><div class="t">view/ + controller/</div><div class="s">in webapp</div></div>
+        </div>
+        <div class="rr">
+          <div class="rr-cell rr-want"><div class="t">Theme (whole look)</div><div class="s">light / dark skin</div></div>
+          <div class="rarrow">→</div>
+          <div class="rr-cell rr-file"><div class="t">data-sap-ui-theme</div><div class="s">bootstrap tag</div></div>
+          <div class="rarrow">→</div>
+          <div class="rr-cell rr-where"><div class="t">index.html</div><div class="s">in webapp</div></div>
+        </div>
+      </div>
+
+      <div class="info note">
+        <div class="ii">🎨</div>
+        <div class="it"><strong>The 4 official themes</strong> you can drop into <code>data-sap-ui-theme="…"</code>: <code>sap_horizon</code> (modern default), <code>sap_horizon_dark</code>, <code>sap_fiori_3</code>, <code>sap_fiori_3_dark</code>. Change the value, save, refresh — the whole app re-skins instantly.</div>
+      </div>
+
+      <div class="info green">
+        <div class="ii">🖼️</div>
+        <div class="it"><strong>Easiest image swap:</strong> replace a file in <code>img/</code> with your own but <em>keep the exact same filename</em> — no code change needed. New filename means you also update where it's referenced (in the model/formatter).</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: To change a product's price shown in the running mock app, which file?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <code>webapp/localService/mockdata/Products.json</code> — with mock data, the products come from JSON files, not a server. Edit the price there, refresh, done. No code required.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U4: Add a Button ═══ -->
+    <div class="unit" id="u4">
+      <div class="unit-tag">Unit 04 · The Core Pattern — Animated</div>
+      <h2 class="unit-title">Add a Button: text → view → controller</h2>
+      <p class="unit-sub">Adding <em>any</em> new element follows the same three-file trio. Press play to watch a "Contact Us" button come to life across the three files.</p>
+
+      <div class="svg-wrap">
+        <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="anim-btn" id="btn-play" onclick="playBtn()">▶ Build the button</button>
+          <button class="anim-btn" id="btn-pause" onclick="pauseBtn()" style="display:none;">⏸ Pause</button>
+        </div>
+        <div class="res-steps" id="btn-steps">
+          <div class="res-step" id="ab0"><div class="rs-icon">🔎</div><div class="rs-text"><strong>Find the control</strong> in the SAP Demo Kit — copy the tag &amp; properties</div><span class="rs-file">Demo Kit</span></div>
+          <div class="res-step" id="ab1"><div class="rs-icon">🔤</div><div class="rs-text"><strong>Add the text</strong> — <code style="color:#a9d8ff">myNewButton=Contact Us</code></div><span class="rs-file">i18n.properties</span></div>
+          <div class="res-step" id="ab2"><div class="rs-icon">🧱</div><div class="rs-text"><strong>Add the control</strong> in the view, referencing the text key</div><span class="rs-file">Welcome.view.xml</span></div>
+          <div class="res-step" id="ab3"><div class="rs-icon">⚙️</div><div class="rs-text"><strong>Add the click handler</strong> function in the controller</div><span class="rs-file">Welcome.controller.js</span></div>
+          <div class="res-step" id="ab4"><div class="rs-icon">✅</div><div class="rs-text"><strong>Save all three → refresh</strong> — your button appears and works</div><span class="rs-file">browser</span></div>
+        </div>
+      </div>
+
+      <div class="sec">The Three Edits, Side by Side</div>
+      <div class="flow-boxes">
+        <div class="flow-b view lit"><div class="fb-t">① i18n.properties — the word</div><div class="fb-c">myNewButton=Contact Us</div></div>
+        <div class="flow-conn lit"></div>
+        <div class="flow-conn-lbl">the view points at that key ↓</div>
+        <div class="flow-b view lit"><div class="fb-t">② Welcome.view.xml — the control</div><div class="fb-c">&lt;Button
+    text="{i18n&gt;myNewButton}"
+    press=".onContactPress" /&gt;</div></div>
+        <div class="flow-conn lit"></div>
+        <div class="flow-conn-lbl">press="…" names the function ↓</div>
+        <div class="flow-b ctrl lit"><div class="fb-t">③ Welcome.controller.js — the logic</div><div class="fb-c">onContactPress: function () {
+    sap.m.MessageToast.show("Contact us clicked!");
+}</div></div>
+        <div class="flow-conn lit"></div>
+        <div class="flow-conn-lbl">result ↓</div>
+        <div class="flow-b screen lit"><div class="fb-t">On screen</div><div class="fb-c">A button "Contact Us" appears — clicking it pops a toast.</div></div>
+      </div>
+
+      <div class="info red">
+        <div class="ii">🔗</div>
+        <div class="it"><strong>The link that beginners break:</strong> the event name in the view (<code>press=".onContactPress"</code>) must <em>exactly</em> match the function name in the controller (<code>onContactPress</code>). A typo here is the #1 cause of "is not a function" errors.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Your new button shows but clicking it does nothing / throws "is not a function". Why?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> The <code>press=".onContactPress"</code> in the view doesn't match a function of the same name in the controller — either it's misspelled or the function is missing. Names are case-sensitive and must match exactly.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U5: Where Data Lives ═══ -->
+    <div class="unit" id="u5">
+      <div class="unit-tag">Unit 05 · Data Flow — Animated</div>
+      <h2 class="unit-title">Where Your Product Data Lives</h2>
+      <p class="unit-sub">With <code>npm run start-mock</code>, products come from JSON files — not a real server. Follow one product name as it travels from a file all the way to the screen.</p>
+
+      <div class="svg-wrap">
+        <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="anim-btn" id="pipe-play" onclick="playPipe()">▶ Trace the data</button>
+          <button class="anim-btn" id="pipe-pause" onclick="pausePipe()" style="display:none;">⏸ Pause</button>
+        </div>
+        <div class="pipe" id="pipe">
+          <div class="pipe-node data" id="pp0"><div class="pn-t">Products.json</div><div class="pn-s">your data (you edit here)</div></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-node mock" id="pp1"><div class="pn-t">Mock server</div><div class="pn-s">fake backend</div></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-node model" id="pp2"><div class="pn-t">Model</div><div class="pn-s">app data</div></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-node view" id="pp3"><div class="pn-t">View (XML)</div><div class="pn-s">shows {Name}</div></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-node screen" id="pp4"><div class="pn-t">Screen</div><div class="pn-s">final result</div></div>
+        </div>
+        <div class="fmap-detail" id="pipe-detail" style="margin-top:14px;">Press play to follow a product name from the JSON file to the screen. A <strong>formatter</strong> can polish the value on the way (e.g. <code>956 → 956,00 €</code>).</div>
+      </div>
+
+      <div class="sec">The Mock Data Files</div>
+      <table class="tbl">
+        <thead><tr><th>File (in <code>localService/mockdata/</code>)</th><th>Holds</th></tr></thead>
+        <tbody>
+          <tr><td><code>Products.json</code></td><td>All products — names, prices, descriptions</td></tr>
+          <tr><td><code>ProductCategories.json</code></td><td>The category list</td></tr>
+          <tr><td><code>FeaturedProducts.json</code></td><td>Products shown as "featured"</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info green">
+        <div class="ii">🧪</div>
+        <div class="it"><strong>Safe practice:</strong> want to change a product name or price, or add a fake product? Edit these JSON files — no code needed. It's one of the safest ways to experiment and see live results.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: What does a "formatter" do in this pipeline?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> It <strong>polishes a value on its way to the screen</strong> — e.g. turning a raw number <code>956</code> into a formatted price <code>956,00 €</code>. Formatters live in <code>webapp/model/formatter.js</code>.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U6: Reading Bindings ═══ -->
+    <div class="unit" id="u6">
+      <div class="unit-tag">Unit 06 · The #1 Concept — Interactive</div>
+      <h2 class="unit-title">Reading Bindings <code>{…}</code></h2>
+      <p class="unit-sub">Everywhere in the views you see curly braces. That's <strong>binding</strong> — the UI pulls values from a data source instead of hard-coded text. Learn to read the <em>model name</em> before the <code>&gt;</code> and you'll know exactly which file to edit. Click each example.</p>
+
+      <div class="bind-lab">
+        <div class="bind-chips">
+          <div class="bind-chip on" id="bc-i18n" onclick="bindPick('i18n',this)">{i18n&gt;welcomeHeadline}</div>
+          <div class="bind-chip" id="bc-view" onclick="bindPick('view',this)">{view&gt;Product/Name}</div>
+          <div class="bind-chip" id="bc-default" onclick="bindPick('default',this)">{Name}</div>
+          <div class="bind-chip" id="bc-expr" onclick="bindPick('expr',this)">{= ${appView&gt;/layout}... }</div>
+        </div>
+        <div class="bind-out">
+          <div class="bind-expr" id="bind-expr"></div>
+          <div class="bind-parts" id="bind-parts"></div>
+        </div>
+      </div>
+
+      <div class="info tip">
+        <div class="ii">🔑</div>
+        <div class="it"><strong>The rule:</strong> the word before <code>&gt;</code> is the <em>model name</em>. <code>{i18n&gt;…}</code> → the i18n file. <code>{view&gt;…}</code> → the view model. <strong>No prefix</strong> (like <code>{Name}</code>) → the <em>default model</em>, which is your product/OData data. Once you know the model, you know the file.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: You see <code>{Name}</code> with no model prefix. Where does that value come from?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> The <strong>default model</strong> — your product data (from <code>Products.json</code> in mock mode, or OData in a real system). No prefix always means the default model.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U7: Debugging ═══ -->
+    <div class="unit" id="u7">
+      <div class="unit-tag">Unit 07 · Troubleshooting — Interactive</div>
+      <h2 class="unit-title">Debugging &amp; Common Errors</h2>
+      <p class="unit-sub">When a change breaks the app, don't panic — the browser tells you what's wrong. Press <strong>F12 → Console</strong> and read the red error. Click each error below to see the real cause.</p>
+
+      <div class="err-lab">
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg">…is not a function</div>
+          <div class="err-hint">▸ tap to see the cause &amp; fix</div>
+          <div class="err-fix"><strong>Cause:</strong> a typo in a <code>press=".onXxx"</code> name, or the function is missing in the controller. <strong>Fix:</strong> make the view's event name match the controller function exactly (case-sensitive).</div>
+        </div>
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg">Cannot read ... of undefined</div>
+          <div class="err-hint">▸ tap to see the cause &amp; fix</div>
+          <div class="err-fix"><strong>Cause:</strong> a binding path points to data that doesn't exist. <strong>Fix:</strong> check the path in <code>{…}</code> — the field name may be misspelled or missing from the model/JSON.</div>
+        </div>
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg">XML parse error / app won't load</div>
+          <div class="err-hint">▸ tap to see the cause &amp; fix</div>
+          <div class="err-fix"><strong>Cause:</strong> an unclosed tag or a missing <code>/</code> in a <code>.view.xml</code>. <strong>Fix:</strong> every tag must close — <code>&lt;Button …/&gt;</code> or <code>&lt;Button&gt;…&lt;/Button&gt;</code>.</div>
+        </div>
+      </div>
+
+      <div class="sec">XML Rules That Prevent 90% of Breakage</div>
+      <table class="tbl">
+        <thead><tr><th>Rule</th><th>✅ Right</th><th>❌ Wrong</th></tr></thead>
+        <tbody>
+          <tr><td>Every tag closes</td><td><code>&lt;Button/&gt;</code></td><td><code>&lt;Button&gt;</code></td></tr>
+          <tr><td>Attributes need quotes</td><td><code>text="Hello"</code></td><td><code>text=Hello</code></td></tr>
+          <tr><td>Names are case-sensitive</td><td><code>Button</code>, <code>press</code></td><td><code>button</code>, <code>Press</code></td></tr>
+          <tr><td>Event ↔ function match</td><td>view &amp; controller identical</td><td>any spelling mismatch</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info note">
+        <div class="ii">🔍</div>
+        <div class="it"><strong>Best debugging tool:</strong> install the <strong>"UI5 Inspector"</strong> browser extension (or press <code>Ctrl+Shift+Alt+S</code> for the built-in Diagnostics). Click any element on screen to see its control type, properties, and which binding feeds it — it answers "which file controls this thing?" instantly.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: The app shows a blank screen after your edit. First thing to do?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> Press <strong>F12 → Console</strong> and read the red error. It names the problem and often the file/line. A blank screen is usually an XML parse error (unclosed tag) or a bad binding path.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U8: Safety Habits ═══ -->
+    <div class="unit" id="u8">
+      <div class="unit-tag">Unit 08 · Best Practice — Interactive</div>
+      <h2 class="unit-title">Golden Safety Habits</h2>
+      <p class="unit-sub">Tick these off as habits. They prevent almost every "I broke it and don't know how" moment. Tap each to check it.</p>
+
+      <div class="check" id="check-list">
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box">✓</div><div class="ci-t"><strong>Back up before editing.</strong> Copy a file (e.g. <code>Cart.view.xml → Cart.view.xml.bak</code>) so you can restore it. Even better, run <code>git init</code> to undo cleanly.</div></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box">✓</div><div class="ci-t"><strong>Change one thing, then refresh.</strong> Never make five edits at once — if it breaks, you won't know which one did it.</div></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box">✓</div><div class="ci-t"><strong>Never edit <code>node_modules/</code>.</strong> That's the framework. Only edit inside <code>webapp/</code>.</div></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box">✓</div><div class="ci-t"><strong>Keep i18n keys, change only values.</strong> Deleting a key a view uses shows the raw key on screen (e.g. <code>welcomeHeadline</code>) instead of text.</div></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box">✓</div><div class="ci-t"><strong>Match the existing style.</strong> Copy the pattern of a neighbouring function or tag — consistent code means fewer bugs and easier help later.</div></div>
+      </div>
+      <div class="check-progress" id="check-progress">0 of 5 habits locked in</div>
+
+      <div class="sec">Recommended Learning Order</div>
+      <div class="rec-order">
+        <div class="rec-step"><div class="rc-t">Edit one line in <strong>i18n.properties</strong> → refresh</div><span class="rc-lvl">easiest</span></div>
+        <div class="rec-step"><div class="rc-t">Swap a <strong>theme</strong> in the HTML bootstrap</div><span class="rc-lvl">easy</span></div>
+        <div class="rec-step"><div class="rc-t">Add a <strong>CSS rule</strong> in style.css</div><span class="rc-lvl">easy</span></div>
+        <div class="rec-step"><div class="rc-t">Replace an <strong>image</strong> (same filename)</div><span class="rc-lvl">easy</span></div>
+        <div class="rec-step"><div class="rc-t">Add a <strong>Button</strong> (text + view + controller)</div><span class="rc-lvl">core skill</span></div>
+      </div>
+
+      <div class="sec">A Mental Map: 3 Files Per Screen</div>
+      <div class="mono-block"><span class="cmt"># any screen shares one name across three files</span>
+<span class="tag">Welcome.view.xml</span>        <span class="cmt">→ the layout (what you see)</span>
+<span class="tag">Welcome.controller.js</span>  <span class="cmt">→ the behavior (what happens)</span>
+<span class="tag">i18n.properties</span>        <span class="cmt">→ the words (shared by all screens)</span>
+<span class="cmt"># + BaseController.js → shared helpers like this.getRouter()</span></div>
+    </div>
+
+    <!-- ═══ U9: Quiz & Review ═══ -->
+    <div class="unit" id="u9">
+      <div class="unit-tag">Unit 09 · Review</div>
+      <h2 class="unit-title">Quick-Fire Revision</h2>
+      <p class="unit-sub">Five questions to lock it in. Answer out loud before revealing.</p>
+
+      <div class="quiz">
+        <div class="quiz-q">Q1: To change wording, which file — view or i18n? Why?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>i18n</strong>. The view only holds <code>{i18n&gt;key}</code> pointers; the actual text lives in <code>i18n.properties</code>, shared by every screen.</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q2: What are the three files you edit to add a new button?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>i18n.properties</strong> (the text) → <strong>*.view.xml</strong> (the control) → <strong>*.controller.js</strong> (the click handler). Text → view → controller.</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q3: In <code>{i18n&gt;title}</code>, what does the word before the <code>&gt;</code> tell you?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> The <strong>model name</strong> — i.e. which data source (and therefore which file) the value comes from. No prefix = the default (product) model.</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q4: The app broke after an edit. What's your first move?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> Open <strong>F12 → Console</strong> and read the red error — it tells you what and often where. Then undo your last single change.</div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">Q5: Where do mock products live, and can you edit them safely?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <code>webapp/localService/mockdata/Products.json</code> — yes, editing names/prices there is safe and needs no code.</div>
+      </div>
+
+      <div class="tip-box">
+        <div class="tb-icon">🎯</div>
+        <div class="tb-text"><strong>One-line summary:</strong> stay inside <strong>webapp/</strong>, change <strong>one thing at a time</strong>, put text in <strong>i18n</strong>, read the <strong>model name in {bindings}</strong> to find the right file, add elements with the <strong>text → view → controller</strong> trio, and let the <strong>F12 console</strong> guide you when something breaks.</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+/* ── Navigation ── */
+const TOTAL=9;
+const titles=['','Start Here','The webapp/ Folder Map','"I Want to Change…" Router','Add a Button','Where Data Lives','Reading Bindings','Debugging & Errors','Safety Habits','Quiz & Review'];
+let cur=1;
+function go(n,btn){
+  document.querySelectorAll('.unit').forEach(u=>u.classList.remove('active'));
+  document.querySelectorAll('.rail-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('u'+n).classList.add('active');
+  if(btn)btn.classList.add('active');
+  else document.querySelectorAll('.rail-item')[n-1].classList.add('active');
+  cur=n;
+  document.getElementById('ttl').textContent=titles[n];
+  document.getElementById('prog').style.width=Math.round(n/TOTAL*100)+'%';
+  document.querySelector('.content').scrollTop=0;
+}
+function nxt(){const n=cur<TOTAL?cur+1:1;go(n,document.querySelectorAll('.rail-item')[n-1]);}
+function rev(btn){const a=btn.nextElementSibling;a.classList.toggle('on');btn.textContent=a.classList.contains('on')?'Hide Answer':'Reveal Answer';}
+
+/* ── Unit 2: folder map ── */
+const fmapInfo={
+  index:'<strong>index.html</strong> — the entry page that loads the app. Contains the bootstrap script (and the <code>data-sap-ui-theme</code> setting). Beginners usually <em>leave it</em>, except to change the theme.',
+  component:'<strong>Component.js</strong> — the startup component. Boots the app and reads the manifest. <em>Leave it</em> as a beginner.',
+  manifest:'<strong>manifest.json</strong> — the app blueprint: theme, routes, icon, data sources, models. Powerful but <em>advanced</em> — edit carefully once you know more.',
+  view:'<strong>view/</strong> — the screens, written as <code>.view.xml</code> files. This is <em>what appears where</em>. You\'ll <em>edit</em> these to change layout and add controls.',
+  controller:'<strong>controller/</strong> — the logic in <code>.js</code> files: what happens on click. Edit <em>sometimes</em> — e.g. to add a button\'s click handler.',
+  model:'<strong>model/</strong> — formatters and cart logic (e.g. <code>formatter.js</code>, <code>cart.js</code>). Edit <em>sometimes</em>, for things like how a price is formatted.',
+  i18n:'<strong>i18n/</strong> — all user-facing text (labels, titles, buttons) in <code>i18n.properties</code>. <em>Edit often</em> — this is where wording lives.',
+  css:'<strong>css/</strong> — custom styling in <code>style.css</code>. <em>Edit</em> to change colors and spacing. Already wired into the app via the manifest.',
+  img:'<strong>img/</strong> — the app\'s images (carousel banners, favicon). <em>Edit</em> by replacing files (keep the filename) or adding new ones.',
+  local:'<strong>localService/</strong> — the fake backend used by <code>start-mock</code>. <em>Leave</em> the plumbing — but its <code>mockdata/</code> subfolder is fair game.',
+  mock:'<strong>mockdata/</strong> — the JSON files that hold your fake products &amp; data (<code>Products.json</code>…). <em>Edit</em> these freely to change catalog data — no code needed.'
+};
+function fmapPick(key,el){
+  document.querySelectorAll('.frow').forEach(r=>r.style.outline='none');
+  el.style.outline='2px solid #5bbbff';el.style.outlineOffset='1px';
+  document.getElementById('fmap-detail').innerHTML=fmapInfo[key];
+}
+
+/* ── Unit 4: add-a-button animation (pause) ── */
+const abSteps=['ab0','ab1','ab2','ab3','ab4'];
+let abTimer=null,abIdx=0,abPaused=false,abRunning=false;
+function abReset(){clearTimeout(abTimer);abSteps.forEach(id=>{const e=document.getElementById(id);e.classList.remove('lit','done');});}
+function abStep(){
+  if(abPaused)return;
+  if(abIdx>0){const p=document.getElementById(abSteps[abIdx-1]);p.classList.remove('lit');p.classList.add('done');}
+  if(abIdx<abSteps.length){document.getElementById(abSteps[abIdx]).classList.add('lit');abIdx++;abTimer=setTimeout(abStep,1100);}
+  else abDone();
+}
+function abDone(){abRunning=false;abPaused=false;const p=document.getElementById('btn-play');p.style.display='';p.innerHTML='▶ Build again';document.getElementById('btn-pause').style.display='none';}
+function playBtn(){
+  if(abRunning&&abPaused){abPaused=false;document.getElementById('btn-play').style.display='none';document.getElementById('btn-pause').style.display='';abStep();return;}
+  abReset();abIdx=0;abPaused=false;abRunning=true;
+  document.getElementById('btn-play').style.display='none';const pb=document.getElementById('btn-pause');pb.style.display='';pb.innerHTML='⏸ Pause';abStep();
+}
+function pauseBtn(){if(!abRunning)return;abPaused=true;clearTimeout(abTimer);document.getElementById('btn-pause').style.display='none';const p=document.getElementById('btn-play');p.style.display='';p.innerHTML='▶ Resume';}
+
+/* ── Unit 5: data pipeline animation (pause) ── */
+const ppSteps=['pp0','pp1','pp2','pp3','pp4'];
+const ppMsg=[
+  '<strong>Products.json</strong> — the product\'s name sits in this file. This is where <em>you</em> edit data. <code>"Name": "Smartphone"</code>',
+  '<strong>Mock server</strong> — when you run start-mock, a fake backend serves the JSON as if it were a real OData service.',
+  '<strong>Model</strong> — UI5 loads the data into a model, the app\'s in-memory copy of the data.',
+  '<strong>View (XML)</strong> — a control bound with <code>{Name}</code> reads the value from the model. A formatter can polish it (e.g. price → 956,00 €).',
+  '<strong>Screen</strong> — the finished value appears to the user. Change the JSON, refresh, and it flows through all over again.'
+];
+let ppTimer=null,ppIdx=0,ppPaused=false,ppRunning=false;
+function ppReset(){clearTimeout(ppTimer);ppSteps.forEach(id=>document.getElementById(id).classList.remove('lit'));}
+function ppStep(){
+  if(ppPaused)return;
+  if(ppIdx<ppSteps.length){
+    document.getElementById(ppSteps[ppIdx]).classList.add('lit');
+    document.getElementById('pipe-detail').innerHTML=ppMsg[ppIdx];
+    ppIdx++;ppTimer=setTimeout(ppStep,1400);
+  } else ppDone();
+}
+function ppDone(){ppRunning=false;ppPaused=false;const p=document.getElementById('pipe-play');p.style.display='';p.innerHTML='▶ Trace again';document.getElementById('pipe-pause').style.display='none';}
+function playPipe(){
+  if(ppRunning&&ppPaused){ppPaused=false;document.getElementById('pipe-play').style.display='none';document.getElementById('pipe-pause').style.display='';ppStep();return;}
+  ppReset();ppIdx=0;ppPaused=false;ppRunning=true;
+  document.getElementById('pipe-play').style.display='none';const pb=document.getElementById('pipe-pause');pb.style.display='';pb.innerHTML='⏸ Pause';ppStep();
+}
+function pausePipe(){if(!ppRunning)return;ppPaused=true;clearTimeout(ppTimer);document.getElementById('pipe-pause').style.display='none';const p=document.getElementById('pipe-play');p.style.display='';p.innerHTML='▶ Resume';}
+
+/* ── Unit 6: binding decoder ── */
+const bindData={
+  i18n:{
+    expr:'{<span class="model">i18n</span>&gt;<span class="path">welcomeHeadline</span>}',
+    parts:[
+      ['model','i18n','the model name → the <strong>i18n.properties</strong> file'],
+      ['path','welcomeHeadline','the key to look up in that file'],
+      ['file','edit here','change the text in <code>webapp/i18n/i18n.properties</code>']
+    ]
+  },
+  view:{
+    expr:'{<span class="model">view</span>&gt;<span class="path">Product/Name</span>}',
+    parts:[
+      ['model','view','a named <strong>view model</strong> (local to this screen)'],
+      ['path','Product/Name','navigate into the data: the product\'s Name'],
+      ['file','edit here','the model is set in the screen\'s controller']
+    ]
+  },
+  default:{
+    expr:'{<span class="path">Name</span>}',
+    parts:[
+      ['model','(none)','no prefix → the <strong>default model</strong> = your product / OData data'],
+      ['path','Name','the field to read from each record'],
+      ['file','edit here','the data lives in <code>Products.json</code> (mock) or OData']
+    ]
+  },
+  expr:{
+    expr:'{= ${<span class="model">appView</span>&gt;<span class="path">/layout</span>}.startsWith(\'ThreeColumns\') }',
+    parts:[
+      ['model','appView','the model the expression reads from'],
+      ['path','/layout','the value being tested'],
+      ['file','the = sign','means "calculate this" — an <strong>expression binding</strong>, not a plain lookup']
+    ]
+  }
+};
+function bindPick(key,el){
+  document.querySelectorAll('.bind-chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  const d=bindData[key];
+  document.getElementById('bind-expr').innerHTML=d.expr;
+  document.getElementById('bind-parts').innerHTML=d.parts.map(p=>
+    '<div class="bind-part '+p[0]+'"><span class="bp-k">'+p[1]+'</span><span>'+p[2]+'</span></div>').join('');
+}
+
+/* ── Unit 7: error decoder ── */
+function errToggle(card){
+  const fix=card.querySelector('.err-fix');
+  const hint=card.querySelector('.err-hint');
+  const open=fix.classList.toggle('on');
+  hint.style.display=open?'none':'block';
+}
+
+/* ── Unit 8: checklist ── */
+function toggleCheck(el){
+  el.classList.toggle('done');
+  const total=document.querySelectorAll('#check-list .check-item').length;
+  const done=document.querySelectorAll('#check-list .check-item.done').length;
+  document.getElementById('check-progress').textContent=done+' of '+total+' habits locked in'+(done===total?' 🎉':'');
+}
+
+/* ── Init defaults ── */
+fmapPick('i18n',document.querySelectorAll('.frow')[6]);
+bindPick('i18n',document.getElementById('bc-i18n'));
+</script>
+</body>
+</html>
