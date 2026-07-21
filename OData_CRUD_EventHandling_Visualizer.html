@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OData CRUD &amp; Event Handling — Interactive Visualizer</title>
+<style>
+:root{
+  --sap-blue:#0070f2;--sap-dark:#003169;--sap-green:#107e3e;
+  --sap-orange:#e9730c;--sap-red:#bb0000;--sap-purple:#6a2c8c;
+  --bg:#f5f7fa;--line:#e0e6ef;--ink:#1d2d44;--ink-dim:#5a6a7e;
+  --accent-soft:rgba(0,112,242,.08);
+  --c-create:#107e3e;--c-read:#0070f2;--c-update:#e9730c;--c-delete:#bb0000;
+}
+*,*::before,*::after{box-sizing:border-box;}
+html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);}
+.app{display:grid;grid-template-columns:288px 1fr;height:100vh;overflow:hidden;}
+.rail{background:var(--sap-dark);display:flex;flex-direction:column;overflow:hidden;}
+.rail-head{padding:22px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1);}
+.rail-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;margin-bottom:10px;text-transform:uppercase;}
+.rail-head h1{margin:0;font-size:15px;font-weight:700;color:#fff;line-height:1.35;}
+.rail-head p{margin:5px 0 0;font-size:11px;color:rgba(255,255,255,.45);}
+.rail-list{flex:1;overflow-y:auto;padding:10px 8px;}
+.rail-list::-webkit-scrollbar{width:4px;}
+.rail-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);}
+.rail-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;font-size:12.5px;color:rgba(255,255,255,.5);cursor:pointer;margin-bottom:2px;border-left:3px solid transparent;transition:all .18s;user-select:none;}
+.rail-item .num{font-size:10px;font-weight:700;color:rgba(255,255,255,.25);min-width:18px;}
+.rail-item .lbl{flex:1;line-height:1.3;}
+.rail-item .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.12);flex-shrink:0;}
+.rail-item:hover{background:rgba(255,255,255,.07);color:#fff;}
+.rail-item.active{background:rgba(0,112,242,.28);color:#fff;border-left-color:var(--sap-blue);}
+.rail-item.active .num{color:#5bbbff;}
+.rail-item.active .dot{background:#5bbbff;}
+.rail-footer{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:10.5px;color:rgba(255,255,255,.3);}
+.rail-footer span{color:rgba(255,255,255,.6);font-weight:600;}
+.main{display:flex;flex-direction:column;overflow:hidden;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:54px;background:#fff;border-bottom:1px solid var(--line);flex-shrink:0;}
+.topbar .breadcrumb{font-size:12px;color:var(--ink-dim);}
+.topbar .breadcrumb strong{color:var(--ink);font-weight:600;}
+.topbar .pill{font-size:11px;padding:4px 14px;border-radius:20px;background:#e8f4fd;color:var(--sap-blue);font-weight:600;cursor:pointer;border:1px solid #c2dff7;transition:all .18s;}
+.topbar .pill:hover{background:var(--sap-blue);color:#fff;}
+.prog-bar{height:3px;background:var(--line);flex-shrink:0;}
+.prog-fill{height:100%;background:var(--sap-blue);transition:width .4s ease;}
+.content{flex:1;overflow-y:auto;padding:26px 32px 60px;}
+.content::-webkit-scrollbar{width:6px;}
+.content::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+.unit{display:none;}
+.unit.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.unit-tag{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--sap-blue);margin-bottom:8px;}
+.unit-title{font-size:22px;font-weight:700;color:var(--ink);margin:0 0 6px;}
+.unit-sub{font-size:13.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 20px;}
+.sec{font-size:14.5px;font-weight:700;color:var(--sap-dark);margin:22px 0 10px;display:flex;align-items:center;gap:8px;}
+.sec::before{content:'';display:inline-block;width:4px;height:16px;background:var(--sap-blue);border-radius:2px;}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:12px 0;}
+.card{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:15px;transition:all .18s;}
+.card:hover{border-color:var(--sap-blue);box-shadow:0 2px 12px rgba(0,112,242,.1);transform:translateY(-1px);}
+.card .ci{font-size:22px;margin-bottom:8px;}
+.card .ct{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.card .cb{font-size:12px;color:var(--ink-dim);line-height:1.55;}
+.info{display:flex;gap:12px;padding:13px 16px;border-radius:10px;margin:12px 0;}
+.info.tip{background:#fff8e6;border:1.5px solid #f5c842;}
+.info.note{background:#e8f4fd;border:1.5px solid #c2dff7;}
+.info.green{background:#e8f5ee;border:1.5px solid #b5dcc5;}
+.info.red{background:#fdecea;border:1.5px solid #f3b0a8;}
+.info .ii{font-size:18px;flex-shrink:0;}
+.info .it{font-size:12.5px;line-height:1.65;}
+.info.tip .it{color:#6b4f00;}
+.info.note .it{color:#002060;}
+.info.green .it{color:#0a3018;}
+.info.red .it{color:#6b0f07;}
+.info .it code{background:rgba(0,0,0,.08);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.tbl{width:100%;border-collapse:collapse;margin:12px 0;font-size:12.5px;}
+.tbl th{background:var(--sap-dark);color:#fff;padding:9px 13px;text-align:left;font-size:11px;font-weight:700;}
+.tbl th:first-child{border-radius:7px 0 0 0;}.tbl th:last-child{border-radius:0 7px 0 0;}
+.tbl td{padding:9px 13px;border-bottom:1px solid var(--line);vertical-align:top;}
+.tbl tr:hover td{background:var(--accent-soft);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.quiz{background:#f0f7ff;border:1.5px solid #c2dff7;border-radius:10px;padding:15px 18px;margin:12px 0;}
+.quiz-q{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:10px;}
+.rev-btn{background:var(--sap-blue);color:#fff;border:none;padding:7px 16px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s;}
+.rev-btn:hover{background:var(--sap-dark);}
+.quiz-a{display:none;margin-top:11px;font-size:13px;color:var(--ink);line-height:1.65;padding-top:10px;border-top:1px solid #c2dff7;}
+.quiz-a.on{display:block;}
+.quiz-a code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.chk{color:var(--sap-green);font-weight:700;}
+.tip-box{display:flex;gap:12px;padding:16px 18px;background:linear-gradient(135deg,#003169,#0050b3);border-radius:12px;margin:18px 0;color:#fff;}
+.tb-icon{font-size:22px;flex-shrink:0;}
+.tb-text{font-size:13px;line-height:1.7;}
+.tb-text strong{color:#ffde6a;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0;}
+@media(max-width:760px){.two-col{grid-template-columns:1fr;}}
+code{font-family:'JetBrains Mono',Consolas,monospace;}
+.mono-block{background:#0d1520;border-radius:10px;padding:14px 16px;margin:12px 0;font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.82);line-height:1.7;border:1.5px solid #1e3050;overflow-x:auto;white-space:pre;}
+.mono-block .tag{color:#5bbbff;}.mono-block .attr{color:#ffaa44;}.mono-block .val{color:#4fd97a;}.mono-block .cmt{color:rgba(255,255,255,.4);}.mono-block .kw{color:#ff9de2;}.mono-block .fn{color:#ffd966;}.mono-block .key{color:#5bbbff;}.mono-block .num{color:#f78c6c;}
+.mono-cap{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-dim);margin:14px 0 -4px;display:flex;align-items:center;gap:7px;}
+.mono-cap .fp{font-family:'JetBrains Mono',monospace;background:#eef2f8;color:var(--sap-dark);padding:2px 8px;border-radius:5px;font-size:10px;text-transform:none;letter-spacing:0;}
+
+.anim-btn{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.2);padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;margin-bottom:12px;}
+.anim-btn:hover{background:rgba(0,112,242,.4);border-color:#0070f2;}
+.svg-wrap{background:#0d1a2e;border-radius:14px;padding:20px;margin:16px 0;overflow:hidden;border:1.5px solid #1e3050;}
+
+/* architecture stack (Unit 1) */
+.arch{display:flex;flex-direction:column;align-items:center;gap:0;margin:14px 0;}
+.arch-layer{width:100%;max-width:520px;border-radius:10px;padding:13px 16px;border:1.5px solid;text-align:center;}
+.arch-layer .al-t{font-size:13px;font-weight:700;}
+.arch-layer .al-s{font-size:11px;margin-top:2px;opacity:.85;}
+.arch-layer.view{background:#ede9fe;border-color:#c4b5fd;}.arch-layer.view .al-t{color:#5b21b6;}.arch-layer.view .al-s{color:#6d28d9;}
+.arch-layer.ctrl{background:#d9f2ef;border-color:#99e0d8;}.arch-layer.ctrl .al-t{color:#0f766e;}.arch-layer.ctrl .al-s{color:#0f766e;}
+.arch-layer.model{background:#fdece4;border-color:#f3b99a;}.arch-layer.model .al-t{color:#9a4a12;}.arch-layer.model .al-s{color:#b5652a;}
+.arch-layer.svc{background:#e8f4fd;border-color:#c2dff7;}.arch-layer.svc .al-t{color:#002060;}.arch-layer.svc .al-s{color:#0050b3;}
+.arch-layer.db{background:#eef0f2;border-color:#d5dae0;}.arch-layer.db .al-t{color:#374151;}.arch-layer.db .al-s{color:#6b7280;}
+.arch-arrow{color:#9aa7b8;font-size:15px;line-height:1;padding:5px 0;}
+.arch-arrow .aa-l{font-size:9.5px;color:var(--ink-dim);margin-left:6px;}
+
+/* waiter analogy row (Unit 1) */
+.analogy-row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;}
+.analogy-chip{flex:1;min-width:120px;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:11px;text-align:center;}
+.analogy-chip .ac-emo{font-size:20px;}
+.analogy-chip .ac-r{font-size:11px;font-weight:700;color:var(--sap-dark);margin-top:3px;}
+.analogy-chip .ac-m{font-size:10.5px;color:var(--ink-dim);margin-top:1px;}
+
+/* pipeline steps */
+.res-steps{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+.res-step{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);font-size:12px;color:rgba(255,255,255,.72);transition:all .5s ease;}
+.res-step.lit{background:rgba(0,112,242,.2);border-color:#0070f2;color:#fff;}
+.res-step.done{background:rgba(16,126,62,.2);border-color:#4fd97a;color:rgba(255,255,255,.85);}
+.res-step .rs-icon{font-size:16px;flex-shrink:0;}
+.res-step .rs-text{flex:1;}
+.res-step .rs-text strong{color:#5bbbff;}
+.res-step.lit .rs-text strong{color:#a9d8ff;}
+.res-step .rs-http{font-family:'JetBrains Mono',monospace;font-size:10px;color:#ffd966;margin-left:auto;flex-shrink:0;}
+
+/* CRUD interactive (Unit 3) */
+.crud-lab{background:#0d1a2e;border-radius:14px;padding:20px;margin:14px 0;border:1.5px solid #1e3050;}
+.crud-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.crud-tab{flex:1;min-width:120px;border-radius:10px;padding:12px;cursor:pointer;transition:all .18s;border:1.5px solid;text-align:center;background:rgba(255,255,255,.05);}
+.crud-tab .ctv{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:800;color:#fff;}
+.crud-tab .ctl{font-size:11px;font-weight:600;margin-top:2px;color:rgba(255,255,255,.7);}
+.crud-tab.create{border-color:rgba(16,126,62,.5);}.crud-tab.read{border-color:rgba(0,112,242,.5);}.crud-tab.update{border-color:rgba(233,115,12,.5);}.crud-tab.delete{border-color:rgba(187,0,0,.5);}
+.crud-tab.create.on{background:rgba(16,126,62,.28);border-color:#4fd97a;}
+.crud-tab.read.on{background:rgba(0,112,242,.28);border-color:#5bbbff;}
+.crud-tab.update.on{background:rgba(233,115,12,.28);border-color:#ffaa44;}
+.crud-tab.delete.on{background:rgba(187,0,0,.32);border-color:#ff7676;}
+.crud-tab:hover{transform:translateY(-2px);}
+.crud-stage{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:760px){.crud-stage{grid-template-columns:1fr;}}
+.crud-box{background:#0d1520;border-radius:10px;padding:14px 16px;border:1.5px solid #1e3050;}
+.crud-box h4{margin:0 0 8px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.5);}
+.crud-line{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:rgba(255,255,255,.85);word-break:break-word;white-space:pre-wrap;}
+.crud-line .verb{font-weight:800;}
+.crud-line .verb.create{color:#4fd97a;}.crud-line .verb.read{color:#5bbbff;}.crud-line .verb.update{color:#ffaa44;}.crud-line .verb.delete{color:#ff7676;}
+.crud-line .u{color:#5bbbff;}.crud-line .fn{color:#ffd966;}
+.crud-desc{margin-top:14px;background:rgba(255,255,255,.05);border-radius:10px;padding:13px 15px;font-size:12.5px;color:#e8eef6;line-height:1.7;border:1.5px solid rgba(255,255,255,.08);}
+.crud-desc strong{color:#5bbbff;}
+.crud-desc code{background:rgba(0,0,0,.35);padding:1px 6px;border-radius:4px;color:#4fd97a;}
+.crud-analogy{margin-top:10px;font-size:12px;color:#bfe3c8;padding-top:10px;border-top:1px dashed rgba(255,255,255,.14);}
+
+/* event map (Unit 7) */
+.evtmap-lab{background:#0d1a2e;border-radius:14px;padding:20px;margin:14px 0;border:1.5px solid #1e3050;}
+.evtmap-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.evtmap-tab{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.14);color:rgba(255,255,255,.78);font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:600;padding:7px 12px;border-radius:7px;cursor:pointer;transition:all .18s;}
+.evtmap-tab:hover{border-color:#0070f2;color:#fff;}
+.evtmap-tab.on{background:rgba(0,112,242,.28);border-color:#0070f2;color:#fff;}
+.evtmap-stage{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:760px){.evtmap-stage{grid-template-columns:1fr;}}
+.evtmap-desc{margin-top:12px;background:rgba(255,255,255,.05);border-radius:8px;padding:12px 14px;font-size:12.5px;color:#e8eef6;line-height:1.65;border:1.5px solid rgba(255,255,255,.08);}
+.evtmap-desc strong{color:#5bbbff;}
+
+/* create/update flow boxes (Unit 4/5) */
+.evt-box{display:flex;flex-direction:column;gap:0;align-items:center;margin-top:10px;}
+.evt-b{width:100%;max-width:470px;border-radius:10px;padding:12px 16px;border:1.5px solid;transition:all .4s ease;opacity:.45;}
+.evt-b.lit{opacity:1;box-shadow:0 0 18px rgba(0,112,242,.3);}
+.evt-b.ui{background:#ede9fe;border-color:#c4b5fd;}
+.evt-b.handler{background:#d9f2ef;border-color:#99e0d8;}
+.evt-b.model{background:#fdece4;border-color:#f3b99a;}
+.evt-b.backend{background:#e8f4fd;border-color:#c2dff7;}
+.evt-b.done{background:#fff8e6;border-color:#f5c842;}
+.evt-b .eb-t{font-size:12.5px;font-weight:700;margin-bottom:4px;}
+.evt-b.ui .eb-t{color:#5b21b6;}.evt-b.handler .eb-t{color:#0f766e;}.evt-b.model .eb-t{color:#9a4a12;}.evt-b.backend .eb-t{color:#002060;}.evt-b.done .eb-t{color:#8a6d00;}
+.evt-b .eb-c{font-size:11.5px;color:#32363a;line-height:1.55;}
+.evt-b .eb-c code{font-family:'JetBrains Mono',monospace;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11px;}
+.evt-conn{width:2px;height:18px;background:#cdd7e3;transition:all .4s;}
+.evt-conn.lit{background:var(--sap-blue);box-shadow:0 0 6px rgba(0,112,242,.4);}
+
+/* status/error decoder (Unit 8) */
+.err-lab{display:flex;flex-direction:column;gap:10px;margin:14px 0;}
+.err-card{border:1.5px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;cursor:pointer;transition:all .16s;}
+.err-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08);border-color:#c2dff7;}
+.err-msg{font-family:'JetBrains Mono',monospace;font-size:12px;padding:11px 14px;display:flex;align-items:center;gap:9px;color:#fff;font-weight:700;}
+.err-msg.ok{background:#0a5a2e;}.err-msg.warn{background:#8a5200;}.err-msg.bad{background:#7a0d0d;}
+.err-code{font-size:14px;}
+.err-fix{padding:12px 14px;font-size:12.5px;color:var(--ink);line-height:1.6;display:none;background:#fff;}
+.err-fix.on{display:block;}
+.err-fix strong{color:var(--sap-dark);}
+.err-fix code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.err-hint{font-size:11px;color:var(--ink-dim);padding:0 14px 10px;}
+
+/* industry selector (Unit 9) */
+.ind-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0;}
+.ind-tab{background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;color:var(--ink-dim);cursor:pointer;transition:all .16s;}
+.ind-tab:hover{border-color:var(--sap-blue);color:var(--sap-blue);}
+.ind-tab.on{background:var(--sap-blue);border-color:var(--sap-blue);color:#fff;}
+
+/* knowledge check (Unit 10) */
+.qopt{display:block;width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:10px 14px;font-size:12.5px;color:var(--ink);cursor:pointer;margin:6px 0;transition:all .15s;font-family:inherit;}
+.qopt:hover{border-color:var(--sap-blue);background:var(--accent-soft);}
+.qopt.correct{border-color:var(--sap-green);background:#e8f5ee;color:#0a3018;font-weight:600;}
+.qopt.wrong{border-color:var(--sap-red);background:#fdecea;color:#660000;}
+.qfb{font-size:12.5px;margin-top:8px;line-height:1.6;display:none;}
+.qfb.on{display:block;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- RAIL -->
+<div class="rail">
+  <div class="rail-head">
+    <div class="rail-badge">🔌 SAPUI5</div>
+    <h1>OData CRUD &amp; Event Handling</h1>
+    <p>Beginner's Interactive Guide · with real code</p>
+  </div>
+  <div class="rail-list">
+    <div class="rail-item active" onclick="go(1,this)"><span class="num">01</span><span class="lbl">What Is OData? (Architecture)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(2,this)"><span class="num">02</span><span class="lbl">The Service &amp; Model Setup</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(3,this)"><span class="num">03</span><span class="lbl">CRUD Explored (Interactive)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(4,this)"><span class="num">04</span><span class="lbl">CREATE — with real code</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(5,this)"><span class="num">05</span><span class="lbl">READ — binding vs read()</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(6,this)"><span class="num">06</span><span class="lbl">UPDATE &amp; DELETE</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(7,this)"><span class="num">07</span><span class="lbl">Event Handling (Interactive)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(8,this)"><span class="num">08</span><span class="lbl">Errors, Validation &amp; Busy</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(9,this)"><span class="num">09</span><span class="lbl">Real-World Use Cases</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(10,this)"><span class="num">10</span><span class="lbl">Knowledge Check</span><span class="dot"></span></div>
+  </div>
+  <div class="rail-footer"><span>Parul GC · ODD SEM 2026</span> · SAP Training</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="breadcrumb">OData CRUD &amp; Event Handling &rsaquo; <strong id="ttl">What Is OData?</strong></div>
+    <button class="pill" onclick="nxt()">Next →</button>
+  </div>
+  <div class="prog-bar"><div class="prog-fill" id="prog" style="width:10%"></div></div>
+  <div class="content">
+
+    <!-- ═══ U1: What Is OData ═══ -->
+    <div class="unit active" id="u1">
+      <div class="unit-tag">Unit 01 · Foundation</div>
+      <h2 class="unit-title">What Is OData?</h2>
+      <p class="unit-sub"><strong>OData (Open Data Protocol)</strong> is an HTTP-based standard for exposing and consuming business data. In SAPUI5, an OData model connects your screen to backends like S/4HANA, SAP Gateway, CAP, BTP services, or any database exposed through OData.</p>
+
+      <div class="info green">
+        <div class="ii">🍽️</div>
+        <div class="it"><strong>In simple words — a restaurant:</strong> your app never walks into the kitchen itself. It tells the <strong>waiter</strong> (the OData service) what it wants; the waiter carries the order to the <strong>kitchen</strong> (the backend) and brings the food (data) back. Your app just talks to the waiter.</div>
+      </div>
+
+      <div class="analogy-row">
+        <div class="analogy-chip"><div class="ac-emo">📱</div><div class="ac-r">SAPUI5 App</div><div class="ac-m">the customer</div></div>
+        <div class="analogy-chip"><div class="ac-emo">🧑‍🍳</div><div class="ac-r">OData Service</div><div class="ac-m">the waiter</div></div>
+        <div class="analogy-chip"><div class="ac-emo">🍳</div><div class="ac-r">Backend / DB</div><div class="ac-m">the kitchen</div></div>
+        <div class="analogy-chip"><div class="ac-emo">📋</div><div class="ac-r">Metadata</div><div class="ac-m">the menu</div></div>
+        <div class="analogy-chip"><div class="ac-emo">📨</div><div class="ac-r">HTTP Request</div><div class="ac-m">the order</div></div>
+      </div>
+
+      <div class="sec">The Overall Architecture</div>
+      <p style="font-size:12.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 4px;">Data flows down through clear layers and comes back up. Your event handlers sit in the controller; the model does the HTTP work.</p>
+      <div class="arch">
+        <div class="arch-layer view"><div class="al-t">SAPUI5 View</div><div class="al-s">Input · Button · Table — what the user sees</div></div>
+        <div class="arch-arrow">▼ <span class="aa-l">user event / data binding</span></div>
+        <div class="arch-layer ctrl"><div class="al-t">Controller</div><div class="al-s">onCreate() · onUpdate() · onDelete() — your logic</div></div>
+        <div class="arch-arrow">▼ <span class="aa-l">calls model methods</span></div>
+        <div class="arch-layer model"><div class="al-t">SAPUI5 OData Model</div><div class="al-s">create() · read() · update() · remove()</div></div>
+        <div class="arch-arrow">▼ <span class="aa-l">HTTP</span></div>
+        <div class="arch-layer svc"><div class="al-t">OData Service</div><div class="al-s">POST · GET · MERGE/PATCH · DELETE</div></div>
+        <div class="arch-arrow">▼ <span class="aa-l">reads / writes</span></div>
+        <div class="arch-layer db"><div class="al-t">SAP Backend / Database</div><div class="al-s">Products · Employees · Orders · Customers</div></div>
+      </div>
+
+      <div class="info note">
+        <div class="ii">🔑</div>
+        <div class="it"><strong>The one idea to hold onto:</strong> the app does <em>not</em> touch the database directly. Every read or change is an HTTP request sent <em>through</em> the OData service. Learn that path and everything else clicks into place.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: In the restaurant analogy, what plays the role of the "waiter"?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> The <strong>OData service</strong>. The app (customer) sends an order (HTTP request) to the waiter (OData service), who fetches from the kitchen (backend/database) and returns the food (data). The app never enters the kitchen itself.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U2: Service & Model Setup ═══ -->
+    <div class="unit" id="u2">
+      <div class="unit-tag">Unit 02 · Setup</div>
+      <h2 class="unit-title">The Service &amp; Model Setup</h2>
+      <p class="unit-sub">Before any CRUD, two things exist: an <strong>OData service</strong> exposing data (like a <code>Products</code> entity set), and an <strong>OData model</strong> in your app configured to talk to it.</p>
+
+      <div class="sec">Anatomy of a Service URL</div>
+      <p style="font-size:12.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 6px;">Say an inventory service exposes a <code>Products</code> entity set, where each product has <code>ProductID</code>, <code>ProductName</code>, <code>Category</code>, <code>Price</code>, <code>Stock</code>.</p>
+      <table class="tbl">
+        <thead><tr><th>You want…</th><th>The URL</th></tr></thead>
+        <tbody>
+          <tr><td>All products</td><td><code>GET /odata/v2/InventoryService/Products</code></td></tr>
+          <tr><td>One product by key</td><td><code>GET .../Products('P1001')</code></td></tr>
+          <tr><td>The "menu" (metadata)</td><td><code>GET .../$metadata</code></td></tr>
+        </tbody>
+      </table>
+      <div class="info note">
+        <div class="ii">📋</div>
+        <div class="it"><strong>What is <code>$metadata</code>?</strong> It's the machine-readable menu: it lists every entity set, each property and its data type, the primary keys, relationships, and available actions. SAPUI5 reads it so it knows how to build requests correctly.</div>
+      </div>
+
+      <div class="sec">Configuring the Model in <code>manifest.json</code></div>
+      <p style="font-size:12.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 4px;">You declare the service as a data source, then create a model that uses it. An empty model name <code>""</code> makes it the <strong>default model</strong>.</p>
+      <div class="mono-cap">📄 <span class="fp">manifest.json</span></div>
+      <div class="mono-block">{
+  <span class="key">"sap.app"</span>: {
+    <span class="key">"dataSources"</span>: {
+      <span class="key">"mainService"</span>: {
+        <span class="key">"uri"</span>: <span class="val">"/odata/v2/InventoryService/"</span>,
+        <span class="key">"type"</span>: <span class="val">"OData"</span>,
+        <span class="key">"settings"</span>: { <span class="key">"odataVersion"</span>: <span class="val">"2.0"</span> }
+      }
+    }
+  },
+  <span class="key">"sap.ui5"</span>: {
+    <span class="key">"models"</span>: {
+      <span class="key">""</span>: {                          <span class="cmt">// "" = default model</span>
+        <span class="key">"dataSource"</span>: <span class="val">"mainService"</span>,
+        <span class="key">"settings"</span>: {
+          <span class="key">"defaultBindingMode"</span>: <span class="val">"TwoWay"</span>,
+          <span class="key">"useBatch"</span>: <span class="kw">true</span>
+        }
+      }
+    }
+  }
+}</div>
+
+      <div class="info green">
+        <div class="ii">🎯</div>
+        <div class="it">Because it's the default model, you grab it in any controller with one line — no name needed:
+        <div class="mono-block" style="margin:8px 0 0;"><span class="kw">const</span> oModel = <span class="kw">this</span>.getView().<span class="fn">getModel</span>();</div></div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: What does the empty model name <code>""</code> in manifest.json mean?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> It marks this as the <strong>default model</strong>, so you can access it with <code>this.getView().getModel()</code> (no name) and bind controls with plain paths like <code>{ProductName}</code> — no model prefix required.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U3: CRUD Explored ═══ -->
+    <div class="unit" id="u3">
+      <div class="unit-tag">Unit 03 · Core Concept — Interactive</div>
+      <h2 class="unit-title">CRUD — The Four Operations</h2>
+      <p class="unit-sub">OData supports the four standard data operations: <strong>C</strong>reate, <strong>R</strong>ead, <strong>U</strong>pdate, <strong>D</strong>elete — each mapped to an HTTP method and an OData V2 model method. Click each to explore.</p>
+
+      <div class="info green">
+        <div class="ii">🗄️</div>
+        <div class="it"><strong>In simple words — an office filing cabinet:</strong> <strong>Create</strong> = place a new file in the cabinet. <strong>Read</strong> = open and retrieve a file. <strong>Update</strong> = correct details in an existing file. <strong>Delete</strong> = remove a file from the cabinet.</div>
+      </div>
+
+      <div class="crud-lab">
+        <div class="crud-tabs">
+          <div class="crud-tab create on" id="cr-create" onclick="crudPick('create',this)"><div class="ctv">C</div><div class="ctl">Create</div></div>
+          <div class="crud-tab read" id="cr-read" onclick="crudPick('read',this)"><div class="ctv">R</div><div class="ctl">Read</div></div>
+          <div class="crud-tab update" id="cr-update" onclick="crudPick('update',this)"><div class="ctv">U</div><div class="ctl">Update</div></div>
+          <div class="crud-tab delete" id="cr-delete" onclick="crudPick('delete',this)"><div class="ctv">D</div><div class="ctl">Delete</div></div>
+        </div>
+        <div class="crud-stage">
+          <div class="crud-box"><h4>HTTP request</h4><div class="crud-line" id="crud-req"></div></div>
+          <div class="crud-box"><h4>OData V2 model method</h4><div class="crud-line" id="crud-method"></div></div>
+        </div>
+        <div class="crud-desc" id="crud-desc"></div>
+      </div>
+
+      <div class="sec">CRUD ↔ HTTP ↔ Model Method</div>
+      <table class="tbl">
+        <thead><tr><th>CRUD</th><th>Purpose</th><th>HTTP Method</th><th>OData V2 Method</th></tr></thead>
+        <tbody>
+          <tr><td><strong style="color:var(--c-create)">Create</strong></td><td>Insert a new entity</td><td><code>POST</code></td><td><code>create()</code></td></tr>
+          <tr><td><strong style="color:var(--c-read)">Read</strong></td><td>Retrieve entities</td><td><code>GET</code></td><td><code>read()</code> / binding</td></tr>
+          <tr><td><strong style="color:var(--c-update)">Update</strong></td><td>Modify an entity</td><td><code>MERGE</code> / <code>PUT</code></td><td><code>update()</code></td></tr>
+          <tr><td><strong style="color:var(--c-delete)">Delete</strong></td><td>Remove an entity</td><td><code>DELETE</code></td><td><code>remove()</code></td></tr>
+        </tbody>
+      </table>
+      <div class="info tip">
+        <div class="ii">🔀</div>
+        <div class="it"><strong>Why MERGE for update?</strong> The V2 model's default update uses <code>MERGE</code>, which changes <em>only the properties you send</em> instead of overwriting the whole record. Send just <code>{Price: 949}</code> and the other fields stay untouched.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: You send <code>{Stock: 20}</code> via <code>update()</code>. What happens to <code>ProductName</code>?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> It stays unchanged. Because V2 update uses <strong>MERGE</strong>, only the properties you include are modified — the fields you leave out keep their existing values.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U4: CREATE ═══ -->
+    <div class="unit" id="u4">
+      <div class="unit-tag">Unit 04 · Create — Animated + Code</div>
+      <h2 class="unit-title">CREATE: Inserting a New Record</h2>
+      <p class="unit-sub">Create inserts a new record — like registering an employee, adding a product, or submitting a leave request. The form values become the request payload. Press play to trace it.</p>
+
+      <div class="info green">
+        <div class="ii">📝</div>
+        <div class="it"><strong>Analogy:</strong> creating data is like filling out a new registration form and handing it to HR. The values you enter become the <em>payload</em> sent to the backend.</div>
+      </div>
+
+      <div class="svg-wrap">
+        <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="anim-btn" id="cr-play" onclick="playCreate()">▶ Trace a Create</button>
+          <button class="anim-btn" id="cr-pause" onclick="pauseCreate()" style="display:none;">⏸ Pause</button>
+        </div>
+        <div class="res-steps" id="cr-steps">
+          <div class="res-step" id="cs0"><div class="rs-icon">⌨️</div><div class="rs-text"><strong>User enters</strong> product details into the form</div></div>
+          <div class="res-step" id="cs1"><div class="rs-icon">👆</div><div class="rs-text"><strong>User clicks "Create Product"</strong> — the press event fires</div></div>
+          <div class="res-step" id="cs2"><div class="rs-icon">⚙️</div><div class="rs-text"><strong>onCreateProduct()</strong> runs, builds the product object &amp; validates</div></div>
+          <div class="res-step" id="cs3"><div class="rs-icon">📤</div><div class="rs-text"><strong>oModel.create("/Products", product)</strong></div><span class="rs-http">POST</span></div>
+          <div class="res-step" id="cs4"><div class="rs-icon">🖥️</div><div class="rs-text"><strong>Backend inserts</strong> the new record</div></div>
+          <div class="res-step" id="cs5"><div class="rs-icon">✅</div><div class="rs-text"><strong>Success callback</strong> — toast "Product created successfully"</div></div>
+        </div>
+      </div>
+
+      <div class="mono-cap">🧱 <span class="fp">Main.view.xml</span> — declare the form &amp; button</div>
+      <div class="mono-block">&lt;<span class="tag">VBox</span> <span class="attr">class</span>=<span class="val">"sapUiMediumMargin"</span>&gt;
+  &lt;<span class="tag">Input</span> <span class="attr">id</span>=<span class="val">"productIdInput"</span>   <span class="attr">placeholder</span>=<span class="val">"Product ID"</span>/&gt;
+  &lt;<span class="tag">Input</span> <span class="attr">id</span>=<span class="val">"productNameInput"</span> <span class="attr">placeholder</span>=<span class="val">"Product name"</span>/&gt;
+  &lt;<span class="tag">Input</span> <span class="attr">id</span>=<span class="val">"priceInput"</span> <span class="attr">type</span>=<span class="val">"Number"</span> <span class="attr">placeholder</span>=<span class="val">"Price"</span>/&gt;
+  &lt;<span class="tag">Button</span> <span class="attr">text</span>=<span class="val">"Create Product"</span> <span class="attr">type</span>=<span class="val">"Emphasized"</span>
+          <span class="attr">press</span>=<span class="val">".onCreateProduct"</span>/&gt;
+&lt;/<span class="tag">VBox</span>&gt;</div>
+
+      <div class="mono-cap">⚙️ <span class="fp">Main.controller.js</span> — the handler</div>
+      <div class="mono-block"><span class="fn">onCreateProduct</span>: <span class="kw">function</span> () {
+  <span class="kw">const</span> oModel = <span class="kw">this</span>.getView().<span class="fn">getModel</span>();
+  <span class="kw">const</span> oProduct = {
+    ProductID:   <span class="kw">this</span>.<span class="fn">byId</span>(<span class="val">"productIdInput"</span>).<span class="fn">getValue</span>().<span class="fn">trim</span>(),
+    ProductName: <span class="kw">this</span>.<span class="fn">byId</span>(<span class="val">"productNameInput"</span>).<span class="fn">getValue</span>().<span class="fn">trim</span>(),
+    Price:       <span class="fn">Number</span>(<span class="kw">this</span>.<span class="fn">byId</span>(<span class="val">"priceInput"</span>).<span class="fn">getValue</span>())
+  };
+
+  <span class="kw">if</span> (!oProduct.ProductID || !oProduct.ProductName) {
+    MessageBox.<span class="fn">warning</span>(<span class="val">"Product ID and name are required."</span>);
+    <span class="kw">return</span>;
+  }
+
+  oModel.<span class="fn">create</span>(<span class="val">"/Products"</span>, oProduct, {
+    success: <span class="kw">function</span> () { MessageToast.<span class="fn">show</span>(<span class="val">"Product created."</span>); },
+    error:   <span class="kw">function</span> (oError) { MessageBox.<span class="fn">error</span>(<span class="val">"Create failed."</span>); }
+  });
+}</div>
+
+      <div class="mono-cap">📡 <span class="fp">Resulting HTTP request</span></div>
+      <div class="mono-block"><span class="verb" style="color:#4fd97a;font-weight:800">POST</span> /odata/v2/InventoryService/Products
+<span class="attr">Content-Type</span>: application/json
+
+{ <span class="key">"ProductID"</span>: <span class="val">"P1001"</span>, <span class="key">"ProductName"</span>: <span class="val">"Wireless Mouse"</span>,
+  <span class="key">"Price"</span>: <span class="num">899</span>, <span class="key">"Stock"</span>: <span class="num">50</span> }</div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Where do the values in the POST body come from?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> From the <strong>form inputs</strong>. The handler reads each field with <code>this.byId("...").getValue()</code>, builds a product object, and passes it as the second argument to <code>oModel.create()</code> — which becomes the request payload.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U5: READ ═══ -->
+    <div class="unit" id="u5">
+      <div class="unit-tag">Unit 05 · Read — Two Ways + Code</div>
+      <h2 class="unit-title">READ: Getting Data onto the Screen</h2>
+      <p class="unit-sub">Read retrieves data — displaying a product list, viewing orders, searching. There are two ways: let <strong>binding</strong> do it (usual), or call <strong>read()</strong> explicitly when you need control.</p>
+
+      <div class="info green">
+        <div class="ii">📚</div>
+        <div class="it"><strong>Analogy:</strong> Read is like asking a librarian for a book. You give search criteria; they return the matching book — or a whole list.</div>
+      </div>
+
+      <div class="sec">Method 1 — Data Binding (preferred for lists/tables)</div>
+      <p style="font-size:12.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 4px;">Bind a table to the entity set and the model does the GET, fills rows, and keeps them updated. No request code.</p>
+      <div class="mono-cap">🧱 <span class="fp">Main.view.xml</span></div>
+      <div class="mono-block">&lt;<span class="tag">Table</span> <span class="attr">id</span>=<span class="val">"productTable"</span> <span class="attr">items</span>=<span class="val">"{/Products}"</span>
+       <span class="attr">mode</span>=<span class="val">"SingleSelectMaster"</span> <span class="attr">selectionChange</span>=<span class="val">".onProductSelect"</span>&gt;
+  &lt;<span class="tag">columns</span>&gt; ... &lt;/<span class="tag">columns</span>&gt;
+  &lt;<span class="tag">items</span>&gt;
+    &lt;<span class="tag">ColumnListItem</span>&gt;
+      &lt;<span class="tag">cells</span>&gt;
+        &lt;<span class="tag">Text</span> <span class="attr">text</span>=<span class="val">"{ProductID}"</span>/&gt;
+        &lt;<span class="tag">Text</span> <span class="attr">text</span>=<span class="val">"{ProductName}"</span>/&gt;
+        &lt;<span class="tag">ObjectNumber</span> <span class="attr">number</span>=<span class="val">"{Price}"</span> <span class="attr">unit</span>=<span class="val">"INR"</span>/&gt;
+      &lt;/<span class="tag">cells</span>&gt;
+    &lt;/<span class="tag">ColumnListItem</span>&gt;
+  &lt;/<span class="tag">items</span>&gt;
+&lt;/<span class="tag">Table</span>&gt;</div>
+      <div class="info note">
+        <div class="ii">🔗</div>
+        <div class="it">The binding <code>items="{/Products}"</code> makes the model send <code>GET /Products</code> automatically and drop one row in per record. This is why Read usually needs the least code.</div>
+      </div>
+
+      <div class="sec">Method 2 — Explicit <code>read()</code></div>
+      <p style="font-size:12.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 4px;">Use when you need custom processing, a count/summary, or to copy results into a JSON model.</p>
+      <div class="mono-cap">⚙️ <span class="fp">Main.controller.js</span></div>
+      <div class="mono-block"><span class="fn">onLoadProducts</span>: <span class="kw">function</span> () {
+  <span class="kw">const</span> oModel = <span class="kw">this</span>.getView().<span class="fn">getModel</span>();
+  <span class="kw">this</span>.getView().<span class="fn">setBusy</span>(<span class="kw">true</span>);
+  oModel.<span class="fn">read</span>(<span class="val">"/Products"</span>, {
+    success: <span class="kw">function</span> (oData) {
+      MessageToast.<span class="fn">show</span>(oData.results.length + <span class="val">" products loaded."</span>);
+      <span class="kw">this</span>.getView().<span class="fn">setBusy</span>(<span class="kw">false</span>);
+    }.<span class="fn">bind</span>(<span class="kw">this</span>),
+    error: <span class="kw">function</span> () { <span class="kw">this</span>.getView().<span class="fn">setBusy</span>(<span class="kw">false</span>); }.<span class="fn">bind</span>(<span class="kw">this</span>)
+  });
+}</div>
+
+      <div class="sec">Reading One Record — use <code>createKey()</code></div>
+      <div class="mono-block"><span class="kw">const</span> sPath = <span class="val">"/"</span> + oModel.<span class="fn">createKey</span>(<span class="val">"Products"</span>, { ProductID: <span class="val">"P1001"</span> });
+oModel.<span class="fn">read</span>(sPath, { success: <span class="kw">function</span> (oProduct) { <span class="fn">console</span>.log(oProduct); } });</div>
+      <div class="info tip">
+        <div class="ii">🔐</div>
+        <div class="it"><strong>Why <code>createKey()</code>?</strong> It builds the key path safely — <code>/Products('P1001')</code> — with correct quoting and encoding, so you don't hand-glue strings and risk typos or special-character bugs.</div>
+      </div>
+
+      <div class="sec">Searching = Filtering the Binding</div>
+      <div class="mono-cap">⚙️ <span class="fp">onSearchProduct handler</span></div>
+      <div class="mono-block"><span class="fn">onSearchProduct</span>: <span class="kw">function</span> (oEvent) {
+  <span class="kw">const</span> sQuery   = oEvent.<span class="fn">getParameter</span>(<span class="val">"newValue"</span>);
+  <span class="kw">const</span> oBinding = <span class="kw">this</span>.<span class="fn">byId</span>(<span class="val">"productTable"</span>).<span class="fn">getBinding</span>(<span class="val">"items"</span>);
+  <span class="kw">const</span> oFilter  = <span class="kw">new</span> Filter(<span class="val">"ProductName"</span>, FilterOperator.Contains, sQuery);
+  oBinding.<span class="fn">filter</span>(sQuery ? [oFilter] : []);
+}</div>
+      <div class="mono-cap">📡 <span class="fp">May generate</span></div>
+      <div class="mono-block"><span class="verb" style="color:#5bbbff;font-weight:800">GET</span> /Products?$filter=contains(ProductName,'Mouse')</div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: To show a product table on screen, which Read method needs the least code?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>Data binding</strong> — <code>items="{/Products}"</code>. The model issues the GET and fills the rows for you. Use explicit <code>read()</code> only when you need custom handling of the results.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U6: UPDATE & DELETE ═══ -->
+    <div class="unit" id="u6">
+      <div class="unit-tag">Unit 06 · Update &amp; Delete — Code</div>
+      <h2 class="unit-title">UPDATE &amp; DELETE</h2>
+      <p class="unit-sub">Both operate on <em>one existing record</em>, identified by its key. Update changes selected fields; Delete removes it (and should always be confirmed first).</p>
+
+      <div class="two-col">
+        <div style="background:#fff5ec;border:1.5px solid #f3b99a;border-radius:10px;padding:14px;">
+          <div style="font-size:13px;font-weight:700;color:#9a4a12;margin-bottom:5px;">✏️ UPDATE</div>
+          <div style="font-size:12px;color:#9a4a12;line-height:1.6;">Like correcting the phone number on an existing employee record — you change selected info, not create anew.</div>
+        </div>
+        <div style="background:#fdecea;border:1.5px solid #f3b0a8;border-radius:10px;padding:14px;">
+          <div style="font-size:13px;font-weight:700;color:#6b0f07;margin-bottom:5px;">🗑️ DELETE</div>
+          <div style="font-size:12px;color:#6b0f07;line-height:1.6;">Like removing an outdated file from a cabinet. It may be irreversible — always confirm with the user.</div>
+        </div>
+      </div>
+
+      <div class="sec">Step 1 — Selection Fills the Form (an event!)</div>
+      <p style="font-size:12.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 4px;">When the user picks a row, grab the record from its binding context and populate the form.</p>
+      <div class="mono-cap">⚙️ <span class="fp">onProductSelect</span></div>
+      <div class="mono-block"><span class="fn">onProductSelect</span>: <span class="kw">function</span> (oEvent) {
+  <span class="kw">const</span> oItem    = oEvent.<span class="fn">getParameter</span>(<span class="val">"listItem"</span>);
+  <span class="kw">const</span> oProduct = oItem.<span class="fn">getBindingContext</span>().<span class="fn">getObject</span>();
+  <span class="kw">this</span>.<span class="fn">byId</span>(<span class="val">"productNameInput"</span>).<span class="fn">setValue</span>(oProduct.ProductName);
+  <span class="kw">this</span>.<span class="fn">byId</span>(<span class="val">"priceInput"</span>).<span class="fn">setValue</span>(oProduct.Price);
+}</div>
+
+      <div class="sec">Step 2 — Update the Changed Fields</div>
+      <div class="mono-cap">⚙️ <span class="fp">onUpdateProduct</span></div>
+      <div class="mono-block"><span class="fn">onUpdateProduct</span>: <span class="kw">function</span> () {
+  <span class="kw">const</span> oModel = <span class="kw">this</span>.getView().<span class="fn">getModel</span>();
+  <span class="kw">const</span> oExisting = <span class="kw">this</span>.<span class="fn">byId</span>(<span class="val">"productTable"</span>).<span class="fn">getSelectedItem</span>()
+                        .<span class="fn">getBindingContext</span>().<span class="fn">getObject</span>();
+  <span class="kw">const</span> sPath = <span class="val">"/"</span> + oModel.<span class="fn">createKey</span>(<span class="val">"Products"</span>, { ProductID: oExisting.ProductID });
+
+  <span class="kw">const</span> oChanged = { Price: <span class="fn">Number</span>(<span class="kw">this</span>.<span class="fn">byId</span>(<span class="val">"priceInput"</span>).<span class="fn">getValue</span>()) };
+
+  oModel.<span class="fn">update</span>(sPath, oChanged, {
+    merge: <span class="kw">true</span>,
+    success: <span class="kw">function</span> () { MessageToast.<span class="fn">show</span>(<span class="val">"Updated."</span>); }
+  });
+}</div>
+      <div class="mono-cap">📡 <span class="fp">HTTP</span></div>
+      <div class="mono-block"><span class="verb" style="color:#ffaa44;font-weight:800">MERGE</span> /odata/v2/InventoryService/Products('P1001')
+
+{ <span class="key">"Price"</span>: <span class="num">949</span>, <span class="key">"Stock"</span>: <span class="num">75</span> }   <span class="cmt">// only these change</span></div>
+
+      <div class="sec">Delete — Always Confirm First</div>
+      <div class="mono-cap">⚙️ <span class="fp">onDeleteProduct</span></div>
+      <div class="mono-block"><span class="fn">onDeleteProduct</span>: <span class="kw">function</span> () {
+  <span class="kw">const</span> oModel   = <span class="kw">this</span>.getView().<span class="fn">getModel</span>();
+  <span class="kw">const</span> oProduct = <span class="kw">this</span>.<span class="fn">byId</span>(<span class="val">"productTable"</span>).<span class="fn">getSelectedItem</span>()
+                        .<span class="fn">getBindingContext</span>().<span class="fn">getObject</span>();
+  <span class="kw">const</span> sPath = <span class="val">"/"</span> + oModel.<span class="fn">createKey</span>(<span class="val">"Products"</span>, { ProductID: oProduct.ProductID });
+
+  MessageBox.<span class="fn">confirm</span>(<span class="val">"Delete "</span> + oProduct.ProductName + <span class="val">"?"</span>, {
+    onClose: <span class="kw">function</span> (sAction) {
+      <span class="kw">if</span> (sAction !== MessageBox.Action.OK) { <span class="kw">return</span>; }
+      oModel.<span class="fn">remove</span>(sPath, { success: <span class="kw">function</span> () { MessageToast.<span class="fn">show</span>(<span class="val">"Deleted."</span>); } });
+    }
+  });
+}</div>
+      <div class="mono-cap">📡 <span class="fp">HTTP</span></div>
+      <div class="mono-block"><span class="verb" style="color:#ff7676;font-weight:800">DELETE</span> /odata/v2/InventoryService/Products('P1001')</div>
+
+      <div class="info tip">
+        <div class="ii">🔄</div>
+        <div class="it"><strong>Auto-refresh:</strong> the V2 model can automatically refresh bindings affected by create/update/remove, so your table updates itself. You can control this with <code>setRefreshAfterChange()</code> — avoid manual <code>refresh(true)</code> after every call, which creates needless requests.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Before calling <code>oModel.remove()</code>, what should you always do?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>Ask the user to confirm</strong> (e.g. <code>MessageBox.confirm(...)</code>), because deletion may be irreversible. Only call <code>remove()</code> inside the confirmation's callback once they agree.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U7: Event Handling ═══ -->
+    <div class="unit" id="u7">
+      <div class="unit-tag">Unit 07 · Event Handling — Interactive</div>
+      <h2 class="unit-title">Event Handling: What Triggers CRUD</h2>
+      <p class="unit-sub">An <strong>event</strong> is an action the app detects — a click, a keystroke, a selection, or even a request finishing. An <strong>event handler</strong> is the controller function (usually named <code>on…</code>) that runs in response. Events are what <em>trigger</em> CRUD.</p>
+
+      <div class="sec">The Flow of an Event</div>
+      <div class="res-steps" style="margin-top:6px;">
+        <div class="res-step done"><div class="rs-icon">🙋</div><div class="rs-text"><strong>User</strong> clicks or types</div></div>
+        <div class="res-step done"><div class="rs-icon">🎛️</div><div class="rs-text"><strong>Control</strong> (Button/Input) fires an event</div></div>
+        <div class="res-step done"><div class="rs-icon">✉️</div><div class="rs-text"><strong>Event object</strong> is created — source, parameters, values</div></div>
+        <div class="res-step done"><div class="rs-icon">⚙️</div><div class="rs-text"><strong>Handler</strong> in the controller executes</div></div>
+        <div class="res-step done"><div class="rs-icon">🧠</div><div class="rs-text"><strong>Business logic</strong> runs — validation, then OData</div></div>
+      </div>
+
+      <div class="sec">Common Events — Click to Explore</div>
+      <div class="evtmap-lab">
+        <div class="evtmap-tabs">
+          <div class="evtmap-tab on" id="ev-press" onclick="evtPick('press',this)">Button · press</div>
+          <div class="evtmap-tab" id="ev-live" onclick="evtPick('live',this)">Input · liveChange</div>
+          <div class="evtmap-tab" id="ev-sel" onclick="evtPick('sel',this)">Table · selectionChange</div>
+          <div class="evtmap-tab" id="ev-search" onclick="evtPick('search',this)">SearchField · search</div>
+        </div>
+        <div class="evtmap-stage">
+          <div class="crud-box"><h4>In the View (XML)</h4><div class="crud-line" id="evt-view"></div></div>
+          <div class="crud-box"><h4>In the Controller (JS)</h4><div class="crud-line" id="evt-ctrl"></div></div>
+        </div>
+        <div class="evtmap-desc" id="evt-desc"></div>
+      </div>
+
+      <div class="info red">
+        <div class="ii">🔗</div>
+        <div class="it"><strong>The #1 beginner bug:</strong> the event name in the view (<code>press=".onCreateProduct"</code>) must match the controller function (<code>onCreateProduct</code>) <em>exactly</em>. A typo gives <code>...is not a function</code>. The leading dot means "look in <em>this</em> view's controller".</div>
+      </div>
+
+      <div class="sec">The Event Object — the 4 Methods You'll Use</div>
+      <table class="tbl">
+        <thead><tr><th>Method</th><th>Returns</th></tr></thead>
+        <tbody>
+          <tr><td><code>getSource()</code></td><td>The control that fired the event</td></tr>
+          <tr><td><code>getParameter("value")</code></td><td>A specific detail the event carries</td></tr>
+          <tr><td><code>getBindingContext()</code></td><td>The data context of the selected control</td></tr>
+          <tr><td><code>getObject()</code></td><td>The full record from that binding context</td></tr>
+        </tbody>
+      </table>
+      <div class="mono-block"><span class="fn">onProductSelect</span>: <span class="kw">function</span> (oEvent) {
+  <span class="kw">const</span> oSource  = oEvent.<span class="fn">getSource</span>();                 <span class="cmt">// the control</span>
+  <span class="kw">const</span> oItem    = oEvent.<span class="fn">getParameter</span>(<span class="val">"listItem"</span>);   <span class="cmt">// event detail</span>
+  <span class="kw">const</span> oProduct = oItem.<span class="fn">getBindingContext</span>().<span class="fn">getObject</span>(); <span class="cmt">// the record</span>
+}</div>
+
+      <div class="sec">Model Request Events — Automatic Busy Feedback</div>
+      <p style="font-size:12.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 4px;">The OData model itself fires events when requests start, finish, or fail — perfect for a busy indicator.</p>
+      <div class="mono-block"><span class="fn">onInit</span>: <span class="kw">function</span> () {
+  <span class="kw">const</span> oModel = <span class="kw">this</span>.getView().<span class="fn">getModel</span>();
+  oModel.<span class="fn">attachRequestSent</span>(     () =&gt; <span class="kw">this</span>.getView().<span class="fn">setBusy</span>(<span class="kw">true</span>));
+  oModel.<span class="fn">attachRequestCompleted</span>(() =&gt; <span class="kw">this</span>.getView().<span class="fn">setBusy</span>(<span class="kw">false</span>));
+  oModel.<span class="fn">attachRequestFailed</span>(   () =&gt; MessageBox.<span class="fn">error</span>(<span class="val">"Request failed."</span>));
+}</div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: A user taps a row. How do you get the full record they tapped?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> From the event: <code>oEvent.getParameter("listItem").getBindingContext().getObject()</code>. The parameter gives the tapped item, its binding context points to the record, and <code>getObject()</code> returns the full data — ready for an Update or Delete.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U8: Errors, Validation, Busy ═══ -->
+    <div class="unit" id="u8">
+      <div class="unit-tag">Unit 08 · Robustness — Interactive</div>
+      <h2 class="unit-title">Errors, Validation &amp; Busy Feedback</h2>
+      <p class="unit-sub">Real apps validate <em>before</em> sending, show progress <em>during</em>, and explain clearly <em>after</em>. These three habits separate a toy from a real feature.</p>
+
+      <div class="sec">1 · Validate Before Any Write</div>
+      <p style="font-size:12.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 4px;">Never send unchecked data to the backend. Guard, then send.</p>
+      <div class="mono-block"><span class="fn">_validateProduct</span>: <span class="kw">function</span> (oProduct) {
+  <span class="kw">if</span> (!oProduct.ProductID)   { MessageBox.<span class="fn">warning</span>(<span class="val">"Enter the product ID."</span>);   <span class="kw">return</span> <span class="kw">false</span>; }
+  <span class="kw">if</span> (oProduct.Price &lt;= <span class="num">0</span>)   { MessageBox.<span class="fn">warning</span>(<span class="val">"Price must be &gt; 0."</span>);       <span class="kw">return</span> <span class="kw">false</span>; }
+  <span class="kw">if</span> (oProduct.Stock &lt; <span class="num">0</span>)    { MessageBox.<span class="fn">warning</span>(<span class="val">"Stock cannot be negative."</span>); <span class="kw">return</span> <span class="kw">false</span>; }
+  <span class="kw">return</span> <span class="kw">true</span>;
+}
+<span class="cmt">// use it:</span>  <span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">_validateProduct</span>(oProduct)) { <span class="kw">return</span>; }</div>
+      <div class="info note">
+        <div class="ii">🛡️</div>
+        <div class="it"><strong>Validate in both places:</strong> frontend checks improve the user's experience (instant feedback); backend checks protect the data (the real guard). Never rely on the frontend alone.</div>
+      </div>
+
+      <div class="sec">2 · Live Validation as the User Types</div>
+      <div class="mono-cap">⚙️ <span class="fp">onStockLiveChange</span></div>
+      <div class="mono-block"><span class="fn">onStockLiveChange</span>: <span class="kw">function</span> (oEvent) {
+  <span class="kw">const</span> iStock = <span class="fn">Number</span>(oEvent.<span class="fn">getParameter</span>(<span class="val">"value"</span>));
+  <span class="kw">const</span> oInput = oEvent.<span class="fn">getSource</span>();
+  <span class="kw">if</span> (iStock &lt; <span class="num">0</span>) {
+    oInput.<span class="fn">setValueState</span>(<span class="val">"Error"</span>);
+    oInput.<span class="fn">setValueStateText</span>(<span class="val">"Stock cannot be negative."</span>);
+  } <span class="kw">else</span> { oInput.<span class="fn">setValueState</span>(<span class="val">"None"</span>); }
+}</div>
+
+      <div class="sec">3 · Read the Server's Answer — Status Codes</div>
+      <p style="font-size:12.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 6px;">Tap each reply to see what it means. <span style="color:#107e3e;font-weight:700;">2xx</span> = worked, <span style="color:#8a5200;font-weight:700;">4xx</span> = your request had a problem, <span style="color:#bb0000;font-weight:700;">5xx</span> = the server broke.</p>
+      <div class="err-lab">
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg ok"><span class="err-code">201 / 204</span> Success</div>
+          <div class="err-hint">▸ tap for meaning</div>
+          <div class="err-fix"><strong>It worked.</strong> <code>201 Created</code> after a create; <code>204 No Content</code> after an update/delete. Your <code>success</code> callback runs — show a toast.</div>
+        </div>
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg warn"><span class="err-code">400 / 403</span> Bad request / Forbidden</div>
+          <div class="err-hint">▸ tap for cause &amp; fix</div>
+          <div class="err-fix"><strong>You sent something invalid, or lack permission / a CSRF token.</strong> For writes, the V2 model normally fetches the security token automatically — a 403 means it wasn't sent or you're not authorized.</div>
+        </div>
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg warn"><span class="err-code">404</span> Not Found</div>
+          <div class="err-hint">▸ tap for cause &amp; fix</div>
+          <div class="err-fix"><strong>Wrong path or the record doesn't exist.</strong> Check the entity set name and the key — this is why <code>createKey()</code> is safer than hand-built paths.</div>
+        </div>
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg bad"><span class="err-code">500</span> Server Error</div>
+          <div class="err-hint">▸ tap for cause &amp; fix</div>
+          <div class="err-fix"><strong>The backend logic failed</strong> — not your UI's fault. The response body usually carries a business message; surface it to the user and report to the backend team.</div>
+        </div>
+      </div>
+
+      <div class="sec">4 · A Reusable Error Parser</div>
+      <div class="mono-block"><span class="fn">_getErrorMessage</span>: <span class="kw">function</span> (oError) {
+  <span class="kw">try</span> {
+    <span class="kw">const</span> o = <span class="fn">JSON</span>.parse(oError.responseText);
+    <span class="kw">return</span> o.error?.message?.value || <span class="val">"The operation failed."</span>;
+  } <span class="kw">catch</span> (e) { <span class="kw">return</span> oError.message || <span class="val">"An unexpected error occurred."</span>; }
+}</div>
+      <div class="info green">
+        <div class="ii">💬</div>
+        <div class="it">Backend messages are often meaningful — "Product cannot be deleted because orders exist", "Record was changed by another user". Parse and show them so users understand <em>why</em> something failed.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Why validate on the frontend if the backend also validates?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> Frontend validation gives <strong>instant, friendly feedback</strong> and avoids needless round-trips; backend validation is the <strong>real protection</strong> for business data. You want both — they serve different purposes.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U9: Real-World Use Cases ═══ -->
+    <div class="unit" id="u9">
+      <div class="unit-tag">Unit 09 · Real World — Interactive</div>
+      <h2 class="unit-title">CRUD Across Industries</h2>
+      <p class="unit-sub">The same four operations power apps everywhere — only the entity changes. Pick an industry to see how CRUD maps to real features.</p>
+
+      <div class="ind-tabs">
+        <div class="ind-tab on" id="in-hr" onclick="indPick('hr',this)">👥 Human Resources</div>
+        <div class="ind-tab" id="in-ecom" onclick="indPick('ecom',this)">🛒 E-commerce</div>
+        <div class="ind-tab" id="in-bank" onclick="indPick('bank',this)">🏦 Banking</div>
+        <div class="ind-tab" id="in-edu" onclick="indPick('edu',this)">🎓 Education</div>
+      </div>
+      <table class="tbl">
+        <thead><tr><th>Operation</th><th id="ind-h">Example</th></tr></thead>
+        <tbody id="ind-body"></tbody>
+      </table>
+
+      <div class="sec">End-to-End: A Warehouse Inventory App</div>
+      <div class="res-steps" style="margin-top:6px;">
+        <div class="res-step done"><div class="rs-icon">🟢</div><div class="rs-text"><strong>Create</strong> — a new laptop arrives; employee clicks "Add Product"</div><span class="rs-http">POST /Products</span></div>
+        <div class="res-step done"><div class="rs-icon">🔵</div><div class="rs-text"><strong>Read</strong> — app opens and lists all products; employee searches "Laptop"</div><span class="rs-http">GET /Products?$filter=…</span></div>
+        <div class="res-step done"><div class="rs-icon">🟠</div><div class="rs-text"><strong>Update</strong> — five laptops sold; stock 25 → 20</div><span class="rs-http">MERGE /Products('LAP100')</span></div>
+        <div class="res-step done"><div class="rs-icon">🔴</div><div class="rs-text"><strong>Delete</strong> — product added by mistake, no dependencies; confirmed &amp; removed</div><span class="rs-http">DELETE /Products('LAP100')</span></div>
+      </div>
+
+      <div class="tip-box">
+        <div class="tb-icon">🔗</div>
+        <div class="tb-text"><strong>The complete loop:</strong> user action → control fires an <strong>event</strong> → controller handler runs → validation &amp; logic → <strong>OData model</strong> sends the HTTP request → backend processes → <strong>success/error</strong> callback → the UI reflects the result. Every SAP app you'll build is variations on this one loop.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U10: Knowledge Check ═══ -->
+    <div class="unit" id="u10">
+      <div class="unit-tag">Unit 10 · Knowledge Check — Interactive</div>
+      <h2 class="unit-title">Knowledge Check</h2>
+      <p class="unit-sub">Tap the answer you think is right for instant feedback.</p>
+
+      <div class="quiz">
+        <div class="quiz-q">1. What does OData let a SAPUI5 app do?</div>
+        <button class="qopt" onclick="pick(this,false)">A. Edit the database file directly</button>
+        <button class="qopt" onclick="pick(this,true)">B. Talk to a backend over HTTP to read &amp; change data</button>
+        <button class="qopt" onclick="pick(this,false)">C. Style the user interface</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">2. Which HTTP method does the V2 model use by default for Update?</div>
+        <button class="qopt" onclick="pick(this,false)">A. POST</button>
+        <button class="qopt" onclick="pick(this,true)">B. MERGE (changes only sent fields)</button>
+        <button class="qopt" onclick="pick(this,false)">C. DELETE</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">3. To display a table of products, you usually…</div>
+        <button class="qopt" onclick="pick(this,true)">A. Bind it: <code>items="{/Products}"</code> — no request code</button>
+        <button class="qopt" onclick="pick(this,false)">B. Write a long GET by hand every time</button>
+        <button class="qopt" onclick="pick(this,false)">C. Call remove() first</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">4. <code>press=".onCreateProduct"</code> in the view requires what in the controller?</div>
+        <button class="qopt" onclick="pick(this,true)">A. A function named exactly <code>onCreateProduct</code></button>
+        <button class="qopt" onclick="pick(this,false)">B. A variable called press</button>
+        <button class="qopt" onclick="pick(this,false)">C. Nothing — it's automatic</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">5. Why prefer <code>createKey()</code> over writing <code>"/Products('P1001')"</code>?</div>
+        <button class="qopt" onclick="pick(this,true)">A. It builds the key path safely with correct quoting/encoding</button>
+        <button class="qopt" onclick="pick(this,false)">B. It's faster to type</button>
+        <button class="qopt" onclick="pick(this,false)">C. It deletes the record</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">6. Before <code>oModel.remove()</code>, you should…</div>
+        <button class="qopt" onclick="pick(this,false)">A. Refresh the whole app</button>
+        <button class="qopt" onclick="pick(this,true)">B. Ask the user to confirm (deletion may be irreversible)</button>
+        <button class="qopt" onclick="pick(this,false)">C. Change the theme</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">7. A write returns 403 Forbidden. Likely cause?</div>
+        <button class="qopt" onclick="pick(this,false)">A. The table has too many rows</button>
+        <button class="qopt" onclick="pick(this,true)">B. Missing CSRF token or no permission</button>
+        <button class="qopt" onclick="pick(this,false)">C. Wrong font</button>
+        <div class="qfb"></div>
+      </div>
+
+      <div class="tip-box">
+        <div class="tb-icon">🎯</div>
+        <div class="tb-text"><strong>One-line summary:</strong> OData connects your app to the backend over HTTP; <strong>CRUD</strong> = create/read/update/remove on the model; an <strong>event</strong> (press, change, selectionChange, search) triggers a handler that validates, calls the model, and reacts in <strong>success/error</strong> — keeping the UI in step with the server.</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+/* ── Navigation ── */
+const TOTAL=10;
+const titles=['','What Is OData?','The Service & Model Setup','CRUD Explored','CREATE','READ','UPDATE & DELETE','Event Handling','Errors, Validation & Busy','Real-World Use Cases','Knowledge Check'];
+let cur=1;
+function go(n,btn){
+  document.querySelectorAll('.unit').forEach(u=>u.classList.remove('active'));
+  document.querySelectorAll('.rail-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('u'+n).classList.add('active');
+  if(btn)btn.classList.add('active');
+  else document.querySelectorAll('.rail-item')[n-1].classList.add('active');
+  cur=n;
+  document.getElementById('ttl').textContent=titles[n];
+  document.getElementById('prog').style.width=Math.round(n/TOTAL*100)+'%';
+  document.querySelector('.content').scrollTop=0;
+}
+function nxt(){const n=cur<TOTAL?cur+1:1;go(n,document.querySelectorAll('.rail-item')[n-1]);}
+function rev(btn){const a=btn.nextElementSibling;a.classList.toggle('on');btn.textContent=a.classList.contains('on')?'Hide Answer':'Reveal Answer';}
+
+/* ── Unit 3: CRUD cards ── */
+const crudData={
+  create:{
+    req:'<span class="verb create">POST</span> <span class="u">/Products</span>\nbody: { "ProductID":"P1001", "Price":899 }',
+    method:'oModel.<span class="fn">create</span>(<span class="u">"/Products"</span>, product, {\n  success: fnOk, error: fnFail\n});',
+    desc:'<strong>Create</strong> inserts a new record. The form values become the request body; the server writes a new row and replies <code>201 Created</code>.',
+    analogy:'🗄️ Like placing a new file in the cabinet.'
+  },
+  read:{
+    req:'<span class="verb read">GET</span> <span class="u">/Products</span>\nor one: <span class="u">/Products(\'P1001\')</span>',
+    method:'<span style="color:rgba(255,255,255,.55)">// usually just bind:</span>\nitems=<span class="u">"{/Products}"</span>\n<span style="color:rgba(255,255,255,.55)">// or explicit:</span> oModel.<span class="fn">read</span>(path,{…})',
+    desc:'<strong>Read</strong> retrieves records. It changes nothing and needs no token. For lists, binding does it automatically; use <code>read()</code> only for custom handling.',
+    analogy:'🗄️ Like opening the cabinet to retrieve a file.'
+  },
+  update:{
+    req:'<span class="verb update">MERGE</span> <span class="u">/Products(\'P1001\')</span>\nbody: { "Price":949 }',
+    method:'oModel.<span class="fn">update</span>(sPath, changed, {\n  merge: true, success: fnOk\n});',
+    desc:'<strong>Update</strong> changes an existing record found by its key. With <code>MERGE</code>, only the properties you send change; the rest are untouched. Server replies <code>204</code>.',
+    analogy:'🗄️ Like correcting details inside an existing file.'
+  },
+  delete:{
+    req:'<span class="verb delete">DELETE</span> <span class="u">/Products(\'P1001\')</span>\n(no body)',
+    method:'oModel.<span class="fn">remove</span>(sPath, {\n  success: fnOk, error: fnFail\n});',
+    desc:'<strong>Delete</strong> removes a record by its key. It may be irreversible — always confirm with the user first, then refresh. Server replies <code>204</code>.',
+    analogy:'🗄️ Like removing a file from the cabinet for good.'
+  }
+};
+function crudPick(key,el){
+  document.querySelectorAll('.crud-tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  const d=crudData[key];
+  document.getElementById('crud-req').innerHTML=d.req;
+  document.getElementById('crud-method').innerHTML=d.method;
+  document.getElementById('crud-desc').innerHTML=d.desc+'<div class="crud-analogy">'+d.analogy+'</div>';
+}
+
+/* ── Unit 4: Create animation (pause) ── */
+const csSteps=['cs0','cs1','cs2','cs3','cs4','cs5'];
+let csTimer=null,csIdx=0,csPaused=false,csRunning=false;
+function csReset(){clearTimeout(csTimer);csSteps.forEach(id=>{const e=document.getElementById(id);e.classList.remove('lit','done');});}
+function csStep(){
+  if(csPaused)return;
+  if(csIdx>0){const p=document.getElementById(csSteps[csIdx-1]);p.classList.remove('lit');p.classList.add('done');}
+  if(csIdx<csSteps.length){document.getElementById(csSteps[csIdx]).classList.add('lit');csIdx++;csTimer=setTimeout(csStep,1050);}
+  else csDone();
+}
+function csDone(){csRunning=false;csPaused=false;const p=document.getElementById('cr-play');p.style.display='';p.innerHTML='▶ Trace again';document.getElementById('cr-pause').style.display='none';}
+function playCreate(){
+  if(csRunning&&csPaused){csPaused=false;document.getElementById('cr-play').style.display='none';document.getElementById('cr-pause').style.display='';csStep();return;}
+  csReset();csIdx=0;csPaused=false;csRunning=true;
+  document.getElementById('cr-play').style.display='none';const pb=document.getElementById('cr-pause');pb.style.display='';pb.innerHTML='⏸ Pause';csStep();
+}
+function pauseCreate(){if(!csRunning)return;csPaused=true;clearTimeout(csTimer);document.getElementById('cr-pause').style.display='none';const p=document.getElementById('cr-play');p.style.display='';p.innerHTML='▶ Resume';}
+
+/* ── Unit 7: event map ── */
+const evtData={
+  press:{
+    view:'&lt;<span style="color:#5bbbff">Button</span> <span style="color:#ffaa44">text</span>=<span style="color:#4fd97a">"Create Product"</span>\n  <span style="color:#ffaa44">press</span>=<span style="color:#4fd97a">".onCreateProduct"</span> /&gt;',
+    ctrl:'<span style="color:#ffd966">onCreateProduct</span>: <span style="color:#ff9de2">function</span> () {\n  <span style="color:rgba(255,255,255,.5)">// build object → validate → create()</span>\n}',
+    desc:'<strong>press</strong> fires when a button is clicked — the most common trigger for Create, Update, or Delete.'
+  },
+  live:{
+    view:'&lt;<span style="color:#5bbbff">Input</span> <span style="color:#ffaa44">type</span>=<span style="color:#4fd97a">"Number"</span>\n  <span style="color:#ffaa44">liveChange</span>=<span style="color:#4fd97a">".onStockLiveChange"</span> /&gt;',
+    ctrl:'<span style="color:#ffd966">onStockLiveChange</span>: <span style="color:#ff9de2">function</span> (oEvent) {\n  <span style="color:#ff9de2">var</span> v = oEvent.<span style="color:#ffd966">getParameter</span>(<span style="color:#4fd97a">"value"</span>);\n  <span style="color:rgba(255,255,255,.5)">// validate as they type</span>\n}',
+    desc:'<strong>liveChange</strong> fires on every keystroke — great for instant validation, like blocking negative stock before the user even leaves the field.'
+  },
+  sel:{
+    view:'&lt;<span style="color:#5bbbff">Table</span> <span style="color:#ffaa44">items</span>=<span style="color:#4fd97a">"{/Products}"</span>\n  <span style="color:#ffaa44">selectionChange</span>=<span style="color:#4fd97a">".onProductSelect"</span>&gt; … &lt;/<span style="color:#5bbbff">Table</span>&gt;',
+    ctrl:'<span style="color:#ffd966">onProductSelect</span>: <span style="color:#ff9de2">function</span> (oEvent) {\n  <span style="color:#ff9de2">var</span> item = oEvent.<span style="color:#ffd966">getParameter</span>(<span style="color:#4fd97a">"listItem"</span>);\n  <span style="color:#ff9de2">var</span> rec  = item.<span style="color:#ffd966">getBindingContext</span>().<span style="color:#ffd966">getObject</span>();\n}',
+    desc:'<strong>selectionChange</strong> fires when a row is picked — you read the record from its binding context to fill a form or open a detail (leads into Update/Delete).'
+  },
+  search:{
+    view:'&lt;<span style="color:#5bbbff">SearchField</span>\n  <span style="color:#ffaa44">search</span>=<span style="color:#4fd97a">".onSearchProduct"</span> /&gt;',
+    ctrl:'<span style="color:#ffd966">onSearchProduct</span>: <span style="color:#ff9de2">function</span> (oEvent) {\n  <span style="color:#ff9de2">var</span> q = oEvent.<span style="color:#ffd966">getParameter</span>(<span style="color:#4fd97a">"query"</span>);\n  <span style="color:rgba(255,255,255,.5)">// binding.filter(...) → $filter</span>\n}',
+    desc:'<strong>search</strong> fires on submit — read the query and apply a <code>Filter</code> to the binding, which becomes an OData <code>$filter</code> on the request.'
+  }
+};
+function evtPick(key,el){
+  document.querySelectorAll('.evtmap-tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  const d=evtData[key];
+  document.getElementById('evt-view').innerHTML=d.view;
+  document.getElementById('evt-ctrl').innerHTML=d.ctrl;
+  document.getElementById('evt-desc').innerHTML=d.desc;
+}
+
+/* ── Unit 8: status decoder ── */
+function errToggle(card){
+  const fix=card.querySelector('.err-fix');
+  const hint=card.querySelector('.err-hint');
+  const open=fix.classList.toggle('on');
+  hint.style.display=open?'none':'block';
+}
+
+/* ── Unit 9: industry selector ── */
+const indData={
+  hr:{h:'Human Resources',rows:[['Create','Register a new employee'],['Read','Display an employee profile'],['Update','Change an employee department'],['Delete','Remove a draft employee record']]},
+  ecom:{h:'E-commerce',rows:[['Create','Add a product to the catalogue'],['Read','Display products'],['Update','Change price or stock'],['Delete','Remove a discontinued product']]},
+  bank:{h:'Banking',rows:[['Create','Submit a beneficiary request'],['Read','Display transaction history'],['Update','Change contact information'],['Delete','Remove a saved beneficiary']]},
+  edu:{h:'Education',rows:[['Create','Register a learner'],['Read','Display course information'],['Update','Modify marks'],['Delete','Remove an incorrect draft entry']]}
+};
+const indColor={Create:'var(--c-create)',Read:'var(--c-read)',Update:'var(--c-update)',Delete:'var(--c-delete)'};
+function indPick(key,el){
+  document.querySelectorAll('.ind-tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  const d=indData[key];
+  document.getElementById('ind-h').textContent=d.h+' example';
+  document.getElementById('ind-body').innerHTML=d.rows.map(r=>
+    '<tr><td><strong style="color:'+indColor[r[0]]+'">'+r[0]+'</strong></td><td>'+r[1]+'</td></tr>').join('');
+}
+
+/* ── Unit 10: knowledge check ── */
+function pick(btn,correct){
+  const quiz=btn.closest('.quiz');
+  if(quiz.dataset.done==='1')return;
+  quiz.dataset.done='1';
+  const fb=quiz.querySelector('.qfb');
+  if(correct){
+    btn.classList.add('correct');
+    fb.innerHTML='<span style="color:#107e3e;font-weight:700;">✓ Correct!</span>';
+  } else {
+    btn.classList.add('wrong');
+    quiz.querySelectorAll('.qopt').forEach(o=>{if(o.getAttribute('onclick').includes('true'))o.classList.add('correct');});
+    fb.innerHTML='<span style="color:#bb0000;font-weight:700;">✗ Not quite</span> — the highlighted option is correct.';
+  }
+  fb.classList.add('on');
+}
+
+/* ── Init defaults ── */
+crudPick('create',document.getElementById('cr-create'));
+evtPick('press',document.getElementById('ev-press'));
+indPick('hr',document.getElementById('in-hr'));
+</script>
+</body>
+</html>
