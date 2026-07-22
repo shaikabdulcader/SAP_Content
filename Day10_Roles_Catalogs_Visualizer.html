@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 10 — Roles &amp; Catalogs | Animated Visualizer</title>
+<style>
+:root{
+  --sap-blue:#0070f2;--sap-dark:#003169;--sap-green:#107e3e;
+  --sap-orange:#e9730c;--sap-red:#bb0000;--sap-purple:#6a2c8c;
+  --bg:#f5f7fa;--line:#e0e6ef;--ink:#1d2d44;--ink-dim:#5a6a7e;
+  --accent-soft:rgba(0,112,242,.08);
+  --cat:#0070f2;--cat-bg:#e6f0fd;--cat-bd:#b8d7f7;
+  --grp:#107e3e;--grp-bg:#e8f5ee;--grp-bd:#b5dcc5;
+  --role:#e9730c;--role-bg:#fdf0e4;--role-bd:#f3cfa8;
+}
+*,*::before,*::after{box-sizing:border-box;}
+html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);}
+.app{display:grid;grid-template-columns:288px 1fr;height:100vh;overflow:hidden;}
+.rail{background:var(--sap-dark);display:flex;flex-direction:column;overflow:hidden;}
+.rail-head{padding:22px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1);}
+.rail-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;margin-bottom:10px;text-transform:uppercase;}
+.rail-head h1{margin:0;font-size:15px;font-weight:700;color:#fff;line-height:1.35;}
+.rail-head p{margin:5px 0 0;font-size:11px;color:rgba(255,255,255,.45);}
+.rail-list{flex:1;overflow-y:auto;padding:10px 8px;}
+.rail-list::-webkit-scrollbar{width:4px;}
+.rail-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);}
+.rail-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;font-size:12.5px;color:rgba(255,255,255,.5);cursor:pointer;margin-bottom:2px;border-left:3px solid transparent;transition:all .18s;user-select:none;}
+.rail-item .num{font-size:10px;font-weight:700;color:rgba(255,255,255,.25);min-width:18px;}
+.rail-item .lbl{flex:1;line-height:1.3;}
+.rail-item .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.12);flex-shrink:0;}
+.rail-item:hover{background:rgba(255,255,255,.07);color:#fff;}
+.rail-item.active{background:rgba(0,112,242,.28);color:#fff;border-left-color:var(--sap-blue);}
+.rail-item.active .num{color:#5bbbff;}
+.rail-item.active .dot{background:#5bbbff;}
+.rail-footer{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:10.5px;color:rgba(255,255,255,.3);}
+.rail-footer span{color:rgba(255,255,255,.6);font-weight:600;}
+.main{display:flex;flex-direction:column;overflow:hidden;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:54px;background:#fff;border-bottom:1px solid var(--line);flex-shrink:0;}
+.topbar .breadcrumb{font-size:12px;color:var(--ink-dim);}
+.topbar .breadcrumb strong{color:var(--ink);font-weight:600;}
+.topbar .pill{font-size:11px;padding:4px 14px;border-radius:20px;background:#e8f4fd;color:var(--sap-blue);font-weight:600;cursor:pointer;border:1px solid #c2dff7;transition:all .18s;}
+.topbar .pill:hover{background:var(--sap-blue);color:#fff;}
+.prog-bar{height:3px;background:var(--line);flex-shrink:0;}
+.prog-fill{height:100%;background:var(--sap-blue);transition:width .4s ease;}
+.content{flex:1;overflow-y:auto;padding:26px 32px 60px;}
+.content::-webkit-scrollbar{width:6px;}
+.content::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+.unit{display:none;}
+.unit.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.unit-tag{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--sap-blue);margin-bottom:8px;}
+.unit-title{font-size:22px;font-weight:700;color:var(--ink);margin:0 0 6px;}
+.unit-sub{font-size:13.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 20px;}
+.sec{font-size:14.5px;font-weight:700;color:var(--sap-dark);margin:22px 0 10px;display:flex;align-items:center;gap:8px;}
+.sec::before{content:'';display:inline-block;width:4px;height:16px;background:var(--sap-blue);border-radius:2px;}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:12px 0;}
+.card{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:15px;transition:all .18s;}
+.card:hover{border-color:var(--sap-blue);box-shadow:0 2px 12px rgba(0,112,242,.1);transform:translateY(-1px);}
+.card .ci{font-size:22px;margin-bottom:8px;}
+.card .ct{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.card .cb{font-size:12px;color:var(--ink-dim);line-height:1.55;}
+.info{display:flex;gap:12px;padding:13px 16px;border-radius:10px;margin:12px 0;}
+.info.tip{background:#fff8e6;border:1.5px solid #f5c842;}
+.info.note{background:#e8f4fd;border:1.5px solid #c2dff7;}
+.info.green{background:#e8f5ee;border:1.5px solid #b5dcc5;}
+.info.red{background:#fdecea;border:1.5px solid #f3b0a8;}
+.info .ii{font-size:18px;flex-shrink:0;}
+.info .it{font-size:12.5px;line-height:1.65;}
+.info.tip .it{color:#6b4f00;}
+.info.note .it{color:#002060;}
+.info.green .it{color:#0a3018;}
+.info.red .it{color:#6b0f07;}
+.info .it code{background:rgba(0,0,0,.08);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.tbl{width:100%;border-collapse:collapse;margin:12px 0;font-size:12.5px;}
+.tbl th{background:var(--sap-dark);color:#fff;padding:9px 13px;text-align:left;font-size:11px;font-weight:700;}
+.tbl th:first-child{border-radius:7px 0 0 0;}.tbl th:last-child{border-radius:0 7px 0 0;}
+.tbl td{padding:9px 13px;border-bottom:1px solid var(--line);vertical-align:top;}
+.tbl tr:hover td{background:var(--accent-soft);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.quiz{background:#f0f7ff;border:1.5px solid #c2dff7;border-radius:10px;padding:15px 18px;margin:12px 0;}
+.quiz-q{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:10px;}
+.rev-btn{background:var(--sap-blue);color:#fff;border:none;padding:7px 16px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s;}
+.rev-btn:hover{background:var(--sap-dark);}
+.quiz-a{display:none;margin-top:11px;font-size:13px;color:var(--ink);line-height:1.65;padding-top:10px;border-top:1px solid #c2dff7;}
+.quiz-a.on{display:block;}
+.quiz-a code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.chk{color:var(--sap-green);font-weight:700;}
+.tip-box{display:flex;gap:12px;padding:16px 18px;background:linear-gradient(135deg,#003169,#0050b3);border-radius:12px;margin:18px 0;color:#fff;}
+.tb-icon{font-size:22px;flex-shrink:0;}
+.tb-text{font-size:13px;line-height:1.7;}
+.tb-text strong{color:#ffde6a;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0;}
+@media(max-width:760px){.two-col{grid-template-columns:1fr;}}
+code{font-family:'JetBrains Mono',Consolas,monospace;}
+.mono-block{background:#0d1520;border-radius:10px;padding:14px 16px;margin:12px 0;font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.82);line-height:1.7;border:1.5px solid #1e3050;overflow-x:auto;white-space:pre;}
+.mono-block .tag{color:#5bbbff;}.mono-block .attr{color:#ffaa44;}.mono-block .val{color:#4fd97a;}.mono-block .cmt{color:rgba(255,255,255,.4);}.mono-block .kw{color:#ff9de2;}.mono-block .fn{color:#ffd966;}.mono-block .key{color:#5bbbff;}
+
+.anim-btn{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.2);padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;margin-bottom:12px;}
+.anim-btn:hover{background:rgba(0,112,242,.4);border-color:#0070f2;}
+.svg-wrap{background:#0d1a2e;border-radius:14px;padding:20px;margin:16px 0;overflow:hidden;border:1.5px solid #1e3050;}
+
+/* ── Flow diagram (light SVG) ── */
+.diagram{background:#fbfcfe;border:1.5px solid var(--line);border-radius:14px;padding:18px;margin:14px 0;}
+.diagram svg{display:block;width:100%;height:auto;}
+.dg-cap{font-size:11px;color:var(--ink-dim);text-align:center;margin-top:8px;font-style:italic;}
+.dg-node-txt{font-size:12px;font-weight:700;}
+.dg-node-sub{font-size:9px;}
+.dg-edge-lbl{font-size:9.5px;fill:var(--ink-dim);font-weight:600;}
+
+/* pipeline steps */
+.res-steps{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+.res-step{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);font-size:12px;color:rgba(255,255,255,.72);transition:all .5s ease;}
+.res-step.lit{background:rgba(0,112,242,.2);border-color:#0070f2;color:#fff;}
+.res-step.done{background:rgba(16,126,62,.2);border-color:#4fd97a;color:rgba(255,255,255,.85);}
+.res-step .rs-icon{font-size:16px;flex-shrink:0;}
+.res-step .rs-text{flex:1;}
+.res-step .rs-text strong{color:#5bbbff;}
+.res-step.lit .rs-text strong{color:#a9d8ff;}
+.res-step .rs-t{font-family:'JetBrains Mono',monospace;font-size:10px;color:#ffd966;margin-left:auto;flex-shrink:0;}
+
+/* access chain (Unit 1 & 6) horizontal */
+.chain{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin:14px 0;}
+.chain-node{flex:1;min-width:88px;border-radius:10px;padding:12px 8px;text-align:center;border:1.5px solid;transition:all .45s ease;opacity:.4;}
+.chain-node.lit{opacity:1;transform:translateY(-3px);box-shadow:0 4px 14px rgba(0,0,0,.13);}
+.chain-node .cn-emo{font-size:19px;}
+.chain-node .cn-t{font-size:12px;font-weight:700;margin-top:3px;}
+.chain-node .cn-s{font-size:9.5px;margin-top:1px;}
+.chain-node.app{background:#ede9fe;border-color:#c4b5fd;}.chain-node.app .cn-t{color:#5b21b6;}.chain-node.app .cn-s{color:#6d28d9;}
+.chain-node.tile{background:var(--cat-bg);border-color:var(--cat-bd);}.chain-node.tile .cn-t{color:var(--cat);}.chain-node.tile .cn-s{color:#0050b3;}
+.chain-node.cat{background:var(--cat-bg);border-color:var(--cat-bd);}.chain-node.cat .cn-t{color:var(--cat);}.chain-node.cat .cn-s{color:#0050b3;}
+.chain-node.role{background:var(--role-bg);border-color:var(--role-bd);}.chain-node.role .cn-t{color:var(--role);}.chain-node.role .cn-s{color:#b5652a;}
+.chain-node.user{background:var(--grp-bg);border-color:var(--grp-bd);}.chain-node.user .cn-t{color:var(--grp);}.chain-node.user .cn-s{color:#0f766e;}
+.chain-arrow{display:flex;align-items:center;color:#9aa7b8;font-size:14px;padding:0 2px;}
+@media(max-width:640px){.chain{flex-direction:column;}.chain-arrow{transform:rotate(90deg);align-self:center;}}
+
+/* interactive concept tabs (Unit 3) */
+.cc-lab{background:#0d1a2e;border-radius:14px;padding:20px;margin:14px 0;border:1.5px solid #1e3050;}
+.cc-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.cc-tab{flex:1;min-width:130px;border-radius:10px;padding:12px;cursor:pointer;transition:all .18s;border:1.5px solid;text-align:center;background:rgba(255,255,255,.05);}
+.cc-tab .cev{font-size:20px;}
+.cc-tab .ctl{font-size:12px;font-weight:700;margin-top:3px;color:#fff;}
+.cc-tab.cat{border-color:rgba(0,112,242,.5);}.cc-tab.grp{border-color:rgba(16,126,62,.5);}.cc-tab.role{border-color:rgba(233,115,12,.5);}
+.cc-tab.cat.on{background:rgba(0,112,242,.28);border-color:#5bbbff;}
+.cc-tab.grp.on{background:rgba(16,126,62,.28);border-color:#4fd97a;}
+.cc-tab.role.on{background:rgba(233,115,12,.28);border-color:#ffaa44;}
+.cc-tab:hover{transform:translateY(-2px);}
+.cc-body{background:#0d1520;border-radius:10px;padding:16px;border:1.5px solid #1e3050;}
+.cc-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.cc-def{font-size:12.5px;color:#e8eef6;line-height:1.7;margin-bottom:12px;}
+.cc-def strong{color:#5bbbff;}
+.cc-analogy{background:rgba(255,255,255,.05);border-radius:8px;padding:11px 13px;font-size:12px;color:#bfe3c8;line-height:1.6;border:1px dashed rgba(255,255,255,.16);}
+.cc-analogy b{color:#8fe0a6;}
+
+/* comparison table highlight (Unit 3) */
+.cmp-cat{color:var(--cat);font-weight:700;}
+.cmp-grp{color:var(--grp);font-weight:700;}
+
+/* PFCG animation (Unit 5) */
+.pfcg{display:flex;flex-direction:column;gap:0;align-items:center;margin-top:10px;}
+.pf-b{width:100%;max-width:470px;border-radius:10px;padding:12px 16px;border:1.5px solid;transition:all .4s ease;opacity:.42;}
+.pf-b.lit{opacity:1;box-shadow:0 0 18px rgba(233,115,12,.25);}
+.pf-b .pb-t{font-size:12.5px;font-weight:700;margin-bottom:3px;color:#9a4a12;}
+.pf-b .pb-c{font-size:11.5px;color:#32363a;line-height:1.5;}
+.pf-b .pb-c code{font-family:'JetBrains Mono',monospace;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11px;}
+.pf-b{background:var(--role-bg);border-color:var(--role-bd);}
+.pf-conn{width:2px;height:16px;background:#e0c4a0;transition:all .4s;}
+.pf-conn.lit{background:var(--role);box-shadow:0 0 6px rgba(233,115,12,.4);}
+
+/* launchpad hierarchy tree (Unit 7) */
+.lp-tree{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0;}
+.lp-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all .16s;font-size:12.5px;}
+.lp-row:hover{background:var(--accent-soft);}
+.lp-row .lp-emo{font-size:16px;}
+.lp-row .lp-n{font-weight:700;color:var(--ink);}
+.lp-row .lp-d{font-size:11.5px;color:var(--ink-dim);}
+.lp-row.lvl1{margin-left:0;}
+.lp-row.lvl2{margin-left:26px;}
+.lp-row.lvl3{margin-left:52px;}
+.lp-row.on{background:#e8f0fd;outline:1.5px solid #b8d7f7;}
+.lp-detail{margin-top:12px;background:#0d1a2e;border:1.5px solid #1e3050;border-radius:10px;padding:14px 16px;font-size:12.5px;color:#e8eef6;line-height:1.7;min-height:56px;transition:all .3s;}
+.lp-detail strong{color:#5bbbff;}
+
+/* error/misconception decoder (Unit 8) */
+.err-lab{display:flex;flex-direction:column;gap:10px;margin:14px 0;}
+.err-card{border:1.5px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;cursor:pointer;transition:all .16s;}
+.err-card:hover{box-shadow:0 2px 12px rgba(187,0,0,.08);border-color:#f3b0a8;}
+.err-msg{background:#2b0b09;color:#ff9d94;font-family:'JetBrains Mono',monospace;font-size:12px;padding:11px 14px;display:flex;align-items:center;gap:8px;}
+.err-msg::before{content:'⚠';color:#ffb02e;font-weight:800;}
+.err-fix{padding:12px 14px;font-size:12.5px;color:var(--ink);line-height:1.6;display:none;background:#fff;}
+.err-fix.on{display:block;}
+.err-fix strong{color:var(--sap-red);}
+.err-fix code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.err-hint{font-size:11px;color:var(--ink-dim);padding:0 14px 10px;}
+
+/* knowledge check */
+.qopt{display:block;width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:10px 14px;font-size:12.5px;color:var(--ink);cursor:pointer;margin:6px 0;transition:all .15s;font-family:inherit;}
+.qopt:hover{border-color:var(--sap-blue);background:var(--accent-soft);}
+.qopt.correct{border-color:var(--sap-green);background:#e8f5ee;color:#0a3018;font-weight:600;}
+.qopt.wrong{border-color:var(--sap-red);background:#fdecea;color:#660000;}
+.qfb{font-size:12.5px;margin-top:8px;line-height:1.6;display:none;}
+.qfb.on{display:block;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- RAIL -->
+<div class="rail">
+  <div class="rail-head">
+    <div class="rail-badge">📅 Day 10</div>
+    <h1>Roles &amp; Catalogs</h1>
+    <p>PFCG · Catalogs · Groups · Animated</p>
+  </div>
+  <div class="rail-list">
+    <div class="rail-item active" onclick="go(1,this)"><span class="num">01</span><span class="lbl">Why Roles &amp; Catalogs?</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(2,this)"><span class="num">02</span><span class="lbl">Tiles &amp; Semantic Objects</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(3,this)"><span class="num">03</span><span class="lbl">Catalog vs Group (Interactive)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(4,this)"><span class="num">04</span><span class="lbl">What Is a PFCG Role?</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(5,this)"><span class="num">05</span><span class="lbl">Building a Role (Animated)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(6,this)"><span class="num">06</span><span class="lbl">Tile → User Access (Animated)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(7,this)"><span class="num">07</span><span class="lbl">Launchpad Hierarchy</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(8,this)"><span class="num">08</span><span class="lbl">Pitfalls &amp; Fixes</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(9,this)"><span class="num">09</span><span class="lbl">Real-World Use Cases</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(10,this)"><span class="num">10</span><span class="lbl">Knowledge Check</span><span class="dot"></span></div>
+  </div>
+  <div class="rail-footer"><span>Parul GC · ODD SEM 2026</span> · SAP Training</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="breadcrumb">Day 10 — Roles &amp; Catalogs &rsaquo; <strong id="ttl">Why Roles &amp; Catalogs?</strong></div>
+    <button class="pill" onclick="nxt()">Next →</button>
+  </div>
+  <div class="prog-bar"><div class="prog-fill" id="prog" style="width:10%"></div></div>
+  <div class="content">
+
+    <!-- ═══ U1: Why ═══ -->
+    <div class="unit active" id="u1">
+      <div class="unit-tag">Unit 01 · Foundation</div>
+      <h2 class="unit-title">Why Roles &amp; Catalogs?</h2>
+      <p class="unit-sub">You've built apps. Now the question is: <strong>who can see them, and where do they appear?</strong> Day 10 is about the Fiori <em>authorization &amp; content</em> model — the machinery that decides which tiles land on which user's launchpad.</p>
+
+      <div class="info green">
+        <div class="ii">🔑</div>
+        <div class="it"><strong>In simple words — an office building:</strong> the <strong>apps</strong> are rooms. A <strong>catalog</strong> is the master list of all rooms that exist. A <strong>group</strong> is a floor directory showing a handy set of rooms. A <strong>role</strong> is the keycard that actually unlocks certain rooms. You need the room to exist <em>and</em> a keycard that opens it.</p></div>
+      </div>
+
+      <div class="sec">Flow Diagram — The Access Chain</div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 150" role="img" aria-label="Access chain from App to User">
+          <defs>
+            <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#9aa7b8"/></marker>
+          </defs>
+          <rect x="8" y="45" width="118" height="58" rx="10" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1.5"/>
+          <text x="67" y="70" text-anchor="middle" class="dg-node-txt" fill="#5b21b6">📱 App</text>
+          <text x="67" y="86" text-anchor="middle" class="dg-node-sub" fill="#6d28d9">the Fiori app</text>
+          <line x1="128" y1="74" x2="160" y2="74" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#ah)"/>
+          <rect x="162" y="45" width="112" height="58" rx="10" fill="#e6f0fd" stroke="#b8d7f7" stroke-width="1.5"/>
+          <text x="218" y="70" text-anchor="middle" class="dg-node-txt" fill="#0070f2">🔲 Tile</text>
+          <text x="218" y="86" text-anchor="middle" class="dg-node-sub" fill="#0050b3">launch button</text>
+          <line x1="276" y1="74" x2="308" y2="74" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#ah)"/>
+          <text x="292" y="66" text-anchor="middle" class="dg-edge-lbl">in a</text>
+          <rect x="310" y="45" width="120" height="58" rx="10" fill="#e6f0fd" stroke="#b8d7f7" stroke-width="1.5"/>
+          <text x="370" y="70" text-anchor="middle" class="dg-node-txt" fill="#0070f2">📚 Catalog</text>
+          <text x="370" y="86" text-anchor="middle" class="dg-node-sub" fill="#0050b3">holds tiles</text>
+          <line x1="432" y1="74" x2="464" y2="74" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#ah)"/>
+          <text x="448" y="66" text-anchor="middle" class="dg-edge-lbl">added to</text>
+          <rect x="466" y="45" width="112" height="58" rx="10" fill="#fdf0e4" stroke="#f3cfa8" stroke-width="1.5"/>
+          <text x="522" y="70" text-anchor="middle" class="dg-node-txt" fill="#e9730c">🪪 Role</text>
+          <text x="522" y="86" text-anchor="middle" class="dg-node-sub" fill="#b5652a">grants access</text>
+          <line x1="580" y1="74" x2="612" y2="74" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#ah)"/>
+          <text x="596" y="66" text-anchor="middle" class="dg-edge-lbl">assigned to</text>
+          <rect x="614" y="45" width="100" height="58" rx="10" fill="#e8f5ee" stroke="#b5dcc5" stroke-width="1.5"/>
+          <text x="664" y="70" text-anchor="middle" class="dg-node-txt" fill="#107e3e">👤 User</text>
+          <text x="664" y="86" text-anchor="middle" class="dg-node-sub" fill="#0f766e">sees the tile</text>
+          <text x="360" y="24" text-anchor="middle" font-size="12" font-weight="700" fill="#003169">Build content → wrap in catalog → reference from role → assign to user</text>
+          <text x="360" y="130" text-anchor="middle" font-size="10" fill="#bb0000">Break any one link and the user sees nothing.</text>
+        </svg>
+        <div class="dg-cap">Every tile reaches a user only when all five links are present.</div>
+      </div>
+
+      <div class="sec">The Three Building Blocks (Today's Subtopics)</div>
+      <div class="cards">
+        <div class="card"><div class="ci">📚</div><div class="ct">Catalog</div><div class="cb">The full <em>menu</em> of apps a user is <em>allowed</em> to find (via App Finder).</div></div>
+        <div class="card"><div class="ci">🗂️</div><div class="ct">Group</div><div class="cb">A tidy <em>set of tiles shown together</em> on the home page for quick access.</div></div>
+        <div class="card"><div class="ci">🪪</div><div class="ct">PFCG Role</div><div class="cb">The backend <em>authorization</em> that ties catalogs/groups to a user.</div></div>
+      </div>
+
+      <div class="info note">
+        <div class="ii">🧭</div>
+        <div class="it"><strong>The key relationship:</strong> a role <em>references</em> one or more catalogs and groups. Assign that role to a user, and they get every tile inside — findable (catalog) and visible (group). No role → no tiles, however many catalogs exist.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: A catalog with your app exists, but a user sees no tile. Most likely reason?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> The user has <strong>no role</strong> connecting them to that catalog. A catalog just makes apps <em>available</em>; a <strong>role</strong> assigned to the user is what actually grants access.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U2: Tiles & Semantic Objects ═══ -->
+    <div class="unit" id="u2">
+      <div class="unit-tag">Unit 02 · Building Blocks</div>
+      <h2 class="unit-title">Tiles &amp; Semantic Objects</h2>
+      <p class="unit-sub">Before catalogs, understand what goes <em>into</em> them: <strong>tiles</strong> (what users tap) and the <strong>semantic object + action</strong> that tells Fiori what to launch. This is the "target mapping" from Day 3, revisited.</p>
+
+      <div class="two-col">
+        <div style="background:var(--cat-bg);border:1.5px solid var(--cat-bd);border-radius:10px;padding:15px;">
+          <div style="font-size:13px;font-weight:700;color:var(--cat);margin-bottom:5px;">🔲 Tile</div>
+          <div style="font-size:12px;color:#0b3a66;line-height:1.7;">The clickable card on the launchpad. Has a title, icon, maybe a live number. Tapping it triggers a <em>navigation intent</em>.</div>
+        </div>
+        <div style="background:#f2e9f7;border:1.5px solid #d8bfe6;border-radius:10px;padding:15px;">
+          <div style="font-size:13px;font-weight:700;color:var(--sap-purple);margin-bottom:5px;">🎯 Target Mapping</div>
+          <div style="font-size:12px;color:#4a1d63;line-height:1.7;">The rule that says "this intent → launch that app." Without it, a tile has nowhere to go.</div>
+        </div>
+      </div>
+
+      <div class="sec">Flow Diagram — What Happens When a Tile Is Tapped</div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 170" role="img" aria-label="Tile tap resolves through intent and target mapping to open the app">
+          <defs>
+            <marker id="ah2" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#9aa7b8"/></marker>
+          </defs>
+          <rect x="12" y="60" width="120" height="54" rx="10" fill="#e6f0fd" stroke="#b8d7f7" stroke-width="1.5"/>
+          <text x="72" y="83" text-anchor="middle" class="dg-node-txt" fill="#0070f2">👆 Tap Tile</text>
+          <text x="72" y="99" text-anchor="middle" class="dg-node-sub" fill="#0050b3">user clicks</text>
+          <line x1="134" y1="87" x2="168" y2="87" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#ah2)"/>
+          <rect x="170" y="60" width="150" height="54" rx="10" fill="#f2e9f7" stroke="#d8bfe6" stroke-width="1.5"/>
+          <text x="245" y="82" text-anchor="middle" class="dg-node-txt" fill="#6a2c8c">🎯 Fires Intent</text>
+          <text x="245" y="99" text-anchor="middle" class="dg-node-sub" fill="#6a2c8c" font-family="monospace">Product-display</text>
+          <line x1="322" y1="87" x2="356" y2="87" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#ah2)"/>
+          <rect x="358" y="60" width="160" height="54" rx="10" fill="#fff8e6" stroke="#f5c842" stroke-width="1.5"/>
+          <text x="438" y="82" text-anchor="middle" class="dg-node-txt" fill="#8a6d00">🗺️ Target Mapping</text>
+          <text x="438" y="99" text-anchor="middle" class="dg-node-sub" fill="#8a6d00">resolves intent → app</text>
+          <line x1="520" y1="87" x2="554" y2="87" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#ah2)"/>
+          <rect x="556" y="60" width="150" height="54" rx="10" fill="#e8f5ee" stroke="#b5dcc5" stroke-width="1.5"/>
+          <text x="631" y="83" text-anchor="middle" class="dg-node-txt" fill="#107e3e">🚀 App Opens</text>
+          <text x="631" y="99" text-anchor="middle" class="dg-node-sub" fill="#0f766e">correct UI5 app</text>
+          <text x="360" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="#003169">Intent-based navigation: meaning, not a fixed URL</text>
+          <text x="360" y="146" text-anchor="middle" font-size="10" fill="#5a6a7e">The same intent can be reused by many tiles, links, and cross-app navigations.</text>
+        </svg>
+        <div class="dg-cap">A tile never points at a URL — it fires an intent that the target mapping resolves.</div>
+      </div>
+
+      <div class="sec">Semantic Object + Action = Intent</div>
+      <p style="font-size:12.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 4px;">Fiori navigation is intent-based. An <strong>intent</strong> is a business meaning, not a URL — which is why the same tile works across apps and devices.</p>
+      <div class="mono-block"><span class="cmt"># Intent = SemanticObject - Action</span>
+<span class="key">Product</span>-<span class="val">display</span>       <span class="cmt"># "show a product"</span>
+<span class="key">SalesOrder</span>-<span class="val">create</span>    <span class="cmt"># "create a sales order"</span>
+<span class="key">Employee</span>-<span class="val">manage</span>     <span class="cmt"># "manage an employee"</span>
+
+<span class="cmt"># A tile fires an intent → target mapping resolves it → app opens</span></div>
+
+      <div class="info green">
+        <div class="ii">📮</div>
+        <div class="it"><strong>Analogy — a postal address vs a person's name:</strong> an intent like <code>Product-display</code> is like asking for "the Sales Manager" (a role/meaning), not "desk 4B, floor 2" (a fixed URL). If the person moves desks, "Sales Manager" still finds them. Intents survive app changes the way a title survives a desk move.</div>
+      </div>
+
+      <div class="sec">How the Pieces Nest</div>
+      <table class="tbl">
+        <thead><tr><th>Piece</th><th>What it is</th><th>Lives in</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Tile</strong></td><td>The launch button + its intent</td><td>A catalog</td></tr>
+          <tr><td><strong>Target Mapping</strong></td><td>Intent → app resolution rule</td><td>A catalog</td></tr>
+          <tr><td><strong>Semantic Object</strong></td><td>The business "thing" (Product, Order)</td><td>Defined centrally, used in intents</td></tr>
+        </tbody>
+      </table>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Why does Fiori use intents like <code>Product-display</code> instead of direct app URLs?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> Because intents express <strong>business meaning</strong>, not a fixed location. Target mappings resolve an intent to whatever app currently handles it — so tiles, links, and cross-app navigation keep working even if the underlying app changes.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U3: Catalog vs Group ═══ -->
+    <div class="unit" id="u3">
+      <div class="unit-tag">Unit 03 · Core Concept — Interactive</div>
+      <h2 class="unit-title">Catalog vs Group</h2>
+      <p class="unit-sub">These two get mixed up constantly. Both hold tiles — but they do <em>different jobs</em>. Click each to explore, then see them side by side.</p>
+
+      <div class="sec">Flow Diagram — Two Different Jobs</div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 200" role="img" aria-label="Catalog controls access, group controls home page visibility">
+          <defs>
+            <marker id="ah3" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#9aa7b8"/></marker>
+          </defs>
+          <rect x="300" y="82" width="120" height="46" rx="10" fill="#eef2f8" stroke="#c9d3e0" stroke-width="1.5"/>
+          <text x="360" y="102" text-anchor="middle" class="dg-node-txt" fill="#1d2d44">🔲 A Tile</text>
+          <text x="360" y="117" text-anchor="middle" class="dg-node-sub" fill="#5a6a7e">e.g. "Manage Products"</text>
+          <line x1="360" y1="82" x2="360" y2="52" stroke="#9aa7b8" stroke-width="1.6"/>
+          <line x1="360" y1="52" x2="220" y2="52" stroke="#9aa7b8" stroke-width="1.6"/>
+          <line x1="220" y1="52" x2="220" y2="46" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#ah3)"/>
+          <rect x="120" y="14" width="200" height="34" rx="9" fill="#e6f0fd" stroke="#b8d7f7" stroke-width="1.5"/>
+          <text x="220" y="30" text-anchor="middle" class="dg-node-txt" fill="#0070f2">📚 Catalog = CAN access</text>
+          <text x="220" y="43" text-anchor="middle" class="dg-node-sub" fill="#0050b3">found in the App Finder · required</text>
+          <line x1="360" y1="128" x2="360" y2="158" stroke="#9aa7b8" stroke-width="1.6"/>
+          <line x1="360" y1="158" x2="500" y2="158" stroke="#9aa7b8" stroke-width="1.6"/>
+          <line x1="500" y1="158" x2="500" y2="164" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#ah3)"/>
+          <rect x="400" y="166" width="220" height="34" rx="9" fill="#e8f5ee" stroke="#b5dcc5" stroke-width="1.5"/>
+          <text x="510" y="182" text-anchor="middle" class="dg-node-txt" fill="#107e3e">🗂️ Group = SEES on home page</text>
+          <text x="510" y="195" text-anchor="middle" class="dg-node-sub" fill="#0f766e">quick-access layout · optional</text>
+          <text x="360" y="10" text-anchor="middle" font-size="10.5" fill="#5a6a7e">The same tile plays two roles depending on where you place it</text>
+        </svg>
+        <div class="dg-cap">Catalog = authorization (can access). Group = home-page visibility (sees quickly).</div>
+      </div>
+
+      <div class="cc-lab">
+        <div class="cc-tabs">
+          <div class="cc-tab cat on" id="cc-cat" onclick="ccPick('cat',this)"><div class="cev">📚</div><div class="ctl">Catalog</div></div>
+          <div class="cc-tab grp" id="cc-grp" onclick="ccPick('grp',this)"><div class="cev">🗂️</div><div class="ctl">Group</div></div>
+          <div class="cc-tab role" id="cc-role" onclick="ccPick('role',this)"><div class="cev">🪪</div><div class="ctl">Role</div></div>
+        </div>
+        <div class="cc-body">
+          <div class="cc-title" id="cc-title"></div>
+          <div class="cc-def" id="cc-def"></div>
+          <div class="cc-analogy" id="cc-analogy"></div>
+        </div>
+      </div>
+
+      <div class="sec">Side by Side</div>
+      <table class="tbl">
+        <thead><tr><th>&nbsp;</th><th class="cmp-cat">Catalog</th><th class="cmp-grp">Group</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Job</strong></td><td>Defines what a user <em>may</em> access</td><td>Defines what a user <em>sees on the home page</em></td></tr>
+          <tr><td><strong>Found in</strong></td><td>App Finder (the full menu)</td><td>Home page (tiles shown by default)</td></tr>
+          <tr><td><strong>Think of it as</strong></td><td>The permission / storeroom</td><td>The showroom / quick-access shelf</td></tr>
+          <tr><td><strong>Required?</strong></td><td>Yes — no catalog, no access</td><td>Optional — improves convenience</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info tip">
+        <div class="ii">💡</div>
+        <div class="it"><strong>The clean mental split:</strong> <span class="cmp-cat">Catalog = CAN access</span> (authorization scope). <span class="cmp-grp">Group = SEES quickly</span> (home-page layout). A tile can be in a catalog but not a group (findable in App Finder only), and it should never be in a group without also being in a catalog the user has.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: A tile is in a user's group but not in any catalog they have. What happens?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> It won't work properly — the group controls <em>visibility</em>, but the <strong>catalog controls access</strong>. Without the catalog authorization, the user can't actually launch it. Always back a group tile with a catalog.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U4: What Is PFCG Role ═══ -->
+    <div class="unit" id="u4">
+      <div class="unit-tag">Unit 04 · Authorization</div>
+      <h2 class="unit-title">What Is a PFCG Role?</h2>
+      <p class="unit-sub"><strong>PFCG</strong> is the ABAP transaction for the <em>Role Maintenance</em> tool. A <strong>role</strong> bundles authorizations and — for Fiori — references the catalogs and groups a user should get. It's the bridge between "content exists" and "this person can use it."</p>
+
+      <div class="info green">
+        <div class="ii">🪪</div>
+        <div class="it"><strong>In simple words — a keyring:</strong> a PFCG role is a labelled keyring ("Sales Rep"). On it hang the keys (catalogs/groups) that a Sales Rep needs. Hand the same keyring to every sales rep and they all get exactly the right doors — manage one keyring, not hundreds of individual keys.</div>
+      </div>
+
+      <div class="sec">Flow Diagram — What a Fiori Role Bundles</div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 200" role="img" aria-label="A PFCG role bundles catalog, group, authorizations and users">
+          <defs>
+            <marker id="ah4" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#9aa7b8"/></marker>
+          </defs>
+          <rect x="280" y="80" width="160" height="60" rx="12" fill="#fdf0e4" stroke="#f3cfa8" stroke-width="2"/>
+          <text x="360" y="104" text-anchor="middle" font-size="13" font-weight="800" fill="#e9730c">🪪 PFCG Role</text>
+          <text x="360" y="122" text-anchor="middle" class="dg-node-sub" fill="#b5652a">Z_SALES_REP</text>
+          <rect x="20" y="14" width="150" height="40" rx="9" fill="#e6f0fd" stroke="#b8d7f7" stroke-width="1.5"/>
+          <text x="95" y="32" text-anchor="middle" class="dg-node-txt" fill="#0070f2">📚 Catalog</text>
+          <text x="95" y="46" text-anchor="middle" class="dg-node-sub" fill="#0050b3">apps allowed</text>
+          <path d="M170,34 Q240,50 292,86" fill="none" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#ah4)"/>
+          <rect x="20" y="68" width="150" height="40" rx="9" fill="#e8f5ee" stroke="#b5dcc5" stroke-width="1.5"/>
+          <text x="95" y="86" text-anchor="middle" class="dg-node-txt" fill="#107e3e">🗂️ Group</text>
+          <text x="95" y="100" text-anchor="middle" class="dg-node-sub" fill="#0f766e">home tiles</text>
+          <line x1="170" y1="96" x2="276" y2="102" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#ah4)"/>
+          <rect x="20" y="122" width="150" height="40" rx="9" fill="#f2e9f7" stroke="#d8bfe6" stroke-width="1.5"/>
+          <text x="95" y="140" text-anchor="middle" class="dg-node-txt" fill="#6a2c8c">🔐 Authorizations</text>
+          <text x="95" y="154" text-anchor="middle" class="dg-node-sub" fill="#6a2c8c">OData &amp; objects</text>
+          <path d="M170,142 Q240,128 288,126" fill="none" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#ah4)"/>
+          <line x1="440" y1="110" x2="510" y2="110" stroke="#9aa7b8" stroke-width="1.8" marker-end="url(#ah4)"/>
+          <text x="475" y="102" text-anchor="middle" class="dg-edge-lbl">assigned to</text>
+          <rect x="512" y="82" width="190" height="56" rx="11" fill="#e8f5ee" stroke="#b5dcc5" stroke-width="1.5"/>
+          <text x="607" y="106" text-anchor="middle" class="dg-node-txt" fill="#107e3e">👥 Users</text>
+          <text x="607" y="122" text-anchor="middle" class="dg-node-sub" fill="#0f766e">every sales rep</text>
+          <text x="360" y="182" text-anchor="middle" font-size="10.5" fill="#5a6a7e">One role gathers catalog + group + authorizations, then is handed to many users at once.</text>
+        </svg>
+        <div class="dg-cap">The role is the hub: content + permissions on one side, users on the other.</div>
+      </div>
+
+      <div class="sec">What a Fiori PFCG Role Contains</div>
+      <div class="cards">
+        <div class="card"><div class="ci">📚</div><div class="ct">Catalog reference</div><div class="cb">Which app catalogs this role grants (the "can access" list).</div></div>
+        <div class="card"><div class="ci">🗂️</div><div class="ct">Group reference</div><div class="cb">Which tile groups appear on the home page.</div></div>
+        <div class="card"><div class="ci">🔐</div><div class="ct">Authorizations</div><div class="cb">Backend permissions (OData services, objects) auto-pulled in.</div></div>
+        <div class="card"><div class="ci">👥</div><div class="ct">Assigned users</div><div class="cb">The people who receive everything above.</div></div>
+      </div>
+
+      <div class="sec">Two Flavours of Role</div>
+      <table class="tbl">
+        <thead><tr><th>Role type</th><th>What it is</th><th>Contains</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Single role</strong></td><td>One focused set of access</td><td>Catalogs, groups, authorizations</td></tr>
+          <tr><td><strong>Composite role</strong></td><td>A bundle of single roles</td><td>Several single roles together</td></tr>
+        </tbody>
+      </table>
+      <div class="info note">
+        <div class="ii">🧩</div>
+        <div class="it"><strong>Composite = keyring of keyrings.</strong> A "Sales Manager" composite role might bundle "Sales Rep" + "Reports Viewer" + "Team Lead" single roles — so one assignment gives all three sets. Great for job profiles.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: What transaction do you use to maintain roles in the ABAP backend?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>PFCG</strong> — the Role Maintenance transaction. It's where you create the role, add Fiori catalogs/groups, generate the authorization profile, and assign users.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U5: Building a Role (Animated) ═══ -->
+    <div class="unit" id="u5">
+      <div class="unit-tag">Unit 05 · PFCG — Animated</div>
+      <h2 class="unit-title">Building a Role in PFCG</h2>
+      <p class="unit-sub">Here's the real sequence a security admin follows in transaction PFCG to create a Fiori role. Press play to walk through it.</p>
+
+      <div class="svg-wrap">
+        <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="anim-btn" id="pf-play" onclick="playPfcg()">▶ Build the role</button>
+          <button class="anim-btn" id="pf-pause" onclick="pausePfcg()" style="display:none;">⏸ Pause</button>
+        </div>
+        <div class="pfcg" id="pfcg-box">
+          <div class="pf-b" id="pf0"><div class="pb-t">① Open PFCG &amp; create the role</div><div class="pb-c">Enter a role name (e.g. <code>Z_SALES_REP</code>) and click Create. Add a description.</div></div>
+          <div class="pf-conn" id="pfc0"></div>
+          <div class="pf-b" id="pf1"><div class="pb-t">② Menu tab → add Catalog</div><div class="pb-c">Insert the Fiori <b>catalog</b> (SAP Fiori Tile Catalog) — the apps this role may access.</div></div>
+          <div class="pf-conn" id="pfc1"></div>
+          <div class="pf-b" id="pf2"><div class="pb-t">③ Menu tab → add Group</div><div class="pb-c">Insert the Fiori <b>group</b> (SAP Fiori Tile Group) — the tiles shown on the home page.</div></div>
+          <div class="pf-conn" id="pfc2"></div>
+          <div class="pf-b" id="pf3"><div class="pb-t">④ Authorizations tab → generate</div><div class="pb-c">Click the profile button; PFCG pulls in the needed authorizations (OData services, objects) and you generate the profile.</div></div>
+          <div class="pf-conn" id="pfc3"></div>
+          <div class="pf-b" id="pf4"><div class="pb-t">⑤ User tab → assign users</div><div class="pb-c">Add the business users, then <b>User Comparison</b> to push the profile to them.</div></div>
+          <div class="pf-conn" id="pfc4"></div>
+          <div class="pf-b" id="pf5"><div class="pb-t">⑥ Done — user logs in</div><div class="pb-c">On next login the user sees the group's tiles and can find catalog apps in the App Finder.</div></div>
+        </div>
+      </div>
+
+      <div class="info tip">
+        <div class="ii">🔄</div>
+        <div class="it"><strong>Don't forget User Comparison.</strong> After assigning users you must run <em>User Comparison</em> (the "Compare" button) so the generated authorization profile is actually written to each user's master record. Skipping it is a classic "role assigned but nothing works" cause.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: In PFCG, which tab do you use to add the Fiori catalog and group?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> The <strong>Menu</strong> tab — you insert the "SAP Fiori Tile Catalog" and "SAP Fiori Tile Group" there. The <strong>Authorizations</strong> tab then generates the matching backend permissions, and the <strong>User</strong> tab assigns people.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U6: Tile → User Access (Animated) ═══ -->
+    <div class="unit" id="u6">
+      <div class="unit-tag">Unit 06 · The Full Chain — Animated</div>
+      <h2 class="unit-title">From Tile to User: The Access Journey</h2>
+      <p class="unit-sub">Let's animate the whole chain end to end — how one app becomes a tile a specific user can tap. Press play.</p>
+
+      <div class="svg-wrap">
+        <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="anim-btn" id="ch-play" onclick="playChain()">▶ Trace the access chain</button>
+          <button class="anim-btn" id="ch-pause" onclick="pauseChain()" style="display:none;">⏸ Pause</button>
+        </div>
+        <div class="res-steps" id="ch-steps">
+          <div class="res-step" id="chs0"><div class="rs-icon">📱</div><div class="rs-text"><strong>App</strong> is deployed and has a target mapping</div></div>
+          <div class="res-step" id="chs1"><div class="rs-icon">🔲</div><div class="rs-text"><strong>Tile</strong> is created for it, firing an intent like <code>Product-display</code></div></div>
+          <div class="res-step" id="chs2"><div class="rs-icon">📚</div><div class="rs-text"><strong>Tile is placed in a Catalog</strong> — now it's an "allowed" app</div><span class="rs-t">catalog</span></div>
+          <div class="res-step" id="chs3"><div class="rs-icon">🗂️</div><div class="rs-text"><strong>Optionally added to a Group</strong> — shows on the home page</div><span class="rs-t">group</span></div>
+          <div class="res-step" id="chs4"><div class="rs-icon">🪪</div><div class="rs-text"><strong>Catalog + Group added to a PFCG Role</strong></div><span class="rs-t">PFCG</span></div>
+          <div class="res-step" id="chs5"><div class="rs-icon">👤</div><div class="rs-text"><strong>Role assigned to the User</strong> (+ User Comparison)</div></div>
+          <div class="res-step" id="chs6"><div class="rs-icon">✅</div><div class="rs-text"><strong>User logs in</strong> — the tile appears and launches the app</div></div>
+        </div>
+      </div>
+
+      <div class="chain" style="margin-top:4px;">
+        <div class="chain-node app lit"><div class="cn-emo">📱</div><div class="cn-t">App</div></div>
+        <div class="chain-arrow">→</div>
+        <div class="chain-node tile lit"><div class="cn-emo">🔲</div><div class="cn-t">Tile</div></div>
+        <div class="chain-arrow">→</div>
+        <div class="chain-node cat lit"><div class="cn-emo">📚</div><div class="cn-t">Catalog</div></div>
+        <div class="chain-arrow">→</div>
+        <div class="chain-node role lit"><div class="cn-emo">🪪</div><div class="cn-t">Role</div></div>
+        <div class="chain-arrow">→</div>
+        <div class="chain-node user lit"><div class="cn-emo">👤</div><div class="cn-t">User</div></div>
+      </div>
+
+      <div class="info note">
+        <div class="ii">🔗</div>
+        <div class="it"><strong>Break any link, break access.</strong> No target mapping → tile does nothing. No catalog → not authorized. No role → user gets nothing. No User Comparison → profile never reaches the user. Debugging access = checking each link in order.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: What's the correct order: role, catalog, tile, user?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> App → <strong>Tile</strong> → <strong>Catalog</strong> (+ optional Group) → <strong>Role</strong> → <strong>User</strong>. You build the content first, wrap it in a catalog, reference the catalog from a role, then assign the role to the user.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U7: Launchpad Hierarchy ═══ -->
+    <div class="unit" id="u7">
+      <div class="unit-tag">Unit 07 · Structure — Interactive</div>
+      <h2 class="unit-title">The Launchpad Content Hierarchy</h2>
+      <p class="unit-sub">Everything a user sees is organized in a tidy hierarchy. Click each level to understand its job and how it nests.</p>
+
+      <div class="sec">Flow Diagram — How It Nests</div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 210" role="img" aria-label="Role contains catalog and group; catalog contains tiles">
+          <defs>
+            <marker id="ah7" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9aa7b8"/></marker>
+          </defs>
+          <rect x="270" y="12" width="180" height="40" rx="10" fill="#fdf0e4" stroke="#f3cfa8" stroke-width="1.8"/>
+          <text x="360" y="30" text-anchor="middle" class="dg-node-txt" fill="#e9730c">🪪 Role</text>
+          <text x="360" y="44" text-anchor="middle" class="dg-node-sub" fill="#b5652a">assigned to user</text>
+          <line x1="360" y1="52" x2="360" y2="70" stroke="#9aa7b8" stroke-width="1.6"/>
+          <line x1="200" y1="70" x2="520" y2="70" stroke="#9aa7b8" stroke-width="1.6"/>
+          <line x1="200" y1="70" x2="200" y2="86" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#ah7)"/>
+          <line x1="520" y1="70" x2="520" y2="86" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#ah7)"/>
+          <rect x="110" y="88" width="180" height="40" rx="10" fill="#e6f0fd" stroke="#b8d7f7" stroke-width="1.5"/>
+          <text x="200" y="106" text-anchor="middle" class="dg-node-txt" fill="#0070f2">📚 Catalog</text>
+          <text x="200" y="120" text-anchor="middle" class="dg-node-sub" fill="#0050b3">apps allowed (App Finder)</text>
+          <rect x="430" y="88" width="180" height="40" rx="10" fill="#e8f5ee" stroke="#b5dcc5" stroke-width="1.5"/>
+          <text x="520" y="106" text-anchor="middle" class="dg-node-txt" fill="#107e3e">🗂️ Group / Space</text>
+          <text x="520" y="120" text-anchor="middle" class="dg-node-sub" fill="#0f766e">home-page tiles</text>
+          <line x1="200" y1="128" x2="200" y2="150" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#ah7)"/>
+          <rect x="90" y="152" width="220" height="42" rx="10" fill="#eef2f8" stroke="#c9d3e0" stroke-width="1.5"/>
+          <text x="200" y="171" text-anchor="middle" class="dg-node-txt" fill="#1d2d44">🔲 Tiles + Target Mappings</text>
+          <text x="200" y="185" text-anchor="middle" class="dg-node-sub" fill="#5a6a7e">the launchable items</text>
+          <path d="M430,120 Q330,150 312,168" fill="none" stroke="#b5dcc5" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#ah7)"/>
+          <text x="392" y="150" text-anchor="middle" class="dg-node-sub" fill="#0f766e">shows selected tiles</text>
+        </svg>
+        <div class="dg-cap">Role → (Catalog → Tiles) + (Group/Space). Click the rows below for details.</div>
+      </div>
+
+      <div class="lp-tree">
+        <div class="lp-row lvl1 on" id="lp-role" onclick="lpPick('role',this)"><span class="lp-emo">🪪</span><span class="lp-n">Role</span><span class="lp-d">— assigned to the user; the top-level container</span></div>
+        <div class="lp-row lvl2" id="lp-cat" onclick="lpPick('cat',this)"><span class="lp-emo">📚</span><span class="lp-n">Catalog</span><span class="lp-d">— apps the user may access</span></div>
+        <div class="lp-row lvl3" id="lp-tile" onclick="lpPick('tile',this)"><span class="lp-emo">🔲</span><span class="lp-n">Tiles + Target Mappings</span><span class="lp-d">— the launchable items</span></div>
+        <div class="lp-row lvl2" id="lp-grp" onclick="lpPick('grp',this)"><span class="lp-emo">🗂️</span><span class="lp-n">Group</span><span class="lp-d">— tiles shown on the home page</span></div>
+        <div class="lp-row lvl2" id="lp-space" onclick="lpPick('space',this)"><span class="lp-emo">🏢</span><span class="lp-n">Space &amp; Page</span><span class="lp-d">— modern layout (spaces replace groups)</span></div>
+      </div>
+      <div class="lp-detail" id="lp-detail"></div>
+
+      <div class="info tip">
+        <div class="ii">🆕</div>
+        <div class="it"><strong>Groups vs Spaces:</strong> classic launchpads use <strong>groups</strong> for the home page; the newer "spaces &amp; pages" model organizes tiles into <strong>pages</strong> grouped under <strong>spaces</strong> (you saw this in the BTP Work Zone guide). Catalogs and roles work the same way in both — only the home-page layout differs.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: In the hierarchy, what sits directly inside a catalog?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>Tiles and their target mappings.</strong> The catalog holds the launchable items (tiles) plus the rules that resolve each tile's intent to an app. The catalog itself sits inside a role.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U8: Pitfalls ═══ -->
+    <div class="unit" id="u8">
+      <div class="unit-tag">Unit 08 · Troubleshooting — Interactive</div>
+      <h2 class="unit-title">Common Pitfalls &amp; Fixes</h2>
+      <p class="unit-sub">Almost every "my tile won't show / won't open" problem is one of these. Tap each to see the real cause and fix.</p>
+
+      <div class="sec">Flow Diagram — Debug in This Order</div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 120" role="img" aria-label="Debug order for access issues">
+          <defs>
+            <marker id="ah8" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#9aa7b8"/></marker>
+          </defs>
+          <g font-size="10.5" font-weight="700">
+            <rect x="6" y="44" width="104" height="40" rx="8" fill="#fff8e6" stroke="#f5c842" stroke-width="1.4"/>
+            <text x="58" y="61" text-anchor="middle" fill="#8a6d00">1 · Target</text>
+            <text x="58" y="75" text-anchor="middle" fill="#8a6d00" font-weight="500" font-size="9">mapping OK?</text>
+            <line x1="110" y1="64" x2="132" y2="64" stroke="#9aa7b8" stroke-width="1.5" marker-end="url(#ah8)"/>
+            <rect x="134" y="44" width="104" height="40" rx="8" fill="#e6f0fd" stroke="#b8d7f7" stroke-width="1.4"/>
+            <text x="186" y="61" text-anchor="middle" fill="#0070f2">2 · Catalog</text>
+            <text x="186" y="75" text-anchor="middle" fill="#0050b3" font-weight="500" font-size="9">has the tile?</text>
+            <line x1="238" y1="64" x2="260" y2="64" stroke="#9aa7b8" stroke-width="1.5" marker-end="url(#ah8)"/>
+            <rect x="262" y="44" width="104" height="40" rx="8" fill="#fdf0e4" stroke="#f3cfa8" stroke-width="1.4"/>
+            <text x="314" y="61" text-anchor="middle" fill="#e9730c">3 · Role</text>
+            <text x="314" y="75" text-anchor="middle" fill="#b5652a" font-weight="500" font-size="9">refs catalog?</text>
+            <line x1="366" y1="64" x2="388" y2="64" stroke="#9aa7b8" stroke-width="1.5" marker-end="url(#ah8)"/>
+            <rect x="390" y="44" width="104" height="40" rx="8" fill="#e8f5ee" stroke="#b5dcc5" stroke-width="1.4"/>
+            <text x="442" y="61" text-anchor="middle" fill="#107e3e">4 · User</text>
+            <text x="442" y="75" text-anchor="middle" fill="#0f766e" font-weight="500" font-size="9">has the role?</text>
+            <line x1="494" y1="64" x2="516" y2="64" stroke="#9aa7b8" stroke-width="1.5" marker-end="url(#ah8)"/>
+            <rect x="518" y="44" width="116" height="40" rx="8" fill="#f2e9f7" stroke="#d8bfe6" stroke-width="1.4"/>
+            <text x="576" y="61" text-anchor="middle" fill="#6a2c8c">5 · Compare</text>
+            <text x="576" y="75" text-anchor="middle" fill="#6a2c8c" font-weight="500" font-size="9">+ re-login</text>
+            <line x1="634" y1="64" x2="656" y2="64" stroke="#9aa7b8" stroke-width="1.5" marker-end="url(#ah8)"/>
+            <rect x="658" y="46" width="56" height="36" rx="8" fill="#e8f5ee" stroke="#4fd97a" stroke-width="1.5"/>
+            <text x="686" y="70" text-anchor="middle" font-size="16">✅</text>
+          </g>
+          <text x="360" y="24" text-anchor="middle" font-size="11.5" font-weight="700" fill="#003169">The first broken link is your culprit — check left to right</text>
+        </svg>
+        <div class="dg-cap">Walk the chain in order; stop at the first step that isn't satisfied.</div>
+      </div>
+
+      <div class="err-lab">
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg">Tile assigned but user sees nothing</div>
+          <div class="err-hint">▸ tap for cause &amp; fix</div>
+          <div class="err-fix"><strong>Cause:</strong> the role was assigned but <b>User Comparison</b> wasn't run, so the profile never reached the user. <strong>Fix:</strong> in PFCG → User tab, click <b>Compare</b>, then have the user re-login.</div>
+        </div>
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg">Tile shows but clicking it does nothing / error</div>
+          <div class="err-hint">▸ tap for cause &amp; fix</div>
+          <div class="err-fix"><strong>Cause:</strong> missing or wrong <b>target mapping</b> — the intent can't resolve to an app. <strong>Fix:</strong> in the catalog, check the target mapping's semantic object, action, and the app's technical details.</div>
+        </div>
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg">App opens but "not authorized" for data</div>
+          <div class="err-hint">▸ tap for cause &amp; fix</div>
+          <div class="err-fix"><strong>Cause:</strong> the OData service authorization wasn't included/generated. <strong>Fix:</strong> in PFCG → Authorizations, re-generate the profile so the service's auth objects are pulled in.</div>
+        </div>
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg">Tile in group but greyed out / missing</div>
+          <div class="err-hint">▸ tap for cause &amp; fix</div>
+          <div class="err-fix"><strong>Cause:</strong> the tile is in a <b>group</b> but not in a <b>catalog</b> the user has. <strong>Fix:</strong> ensure the same tile is in an authorized catalog — group = visibility, catalog = access.</div>
+        </div>
+      </div>
+
+      <div class="info green">
+        <div class="ii">🩺</div>
+        <div class="it"><strong>Debug order:</strong> check the chain in sequence — target mapping → catalog membership → role reference → user assignment → User Comparison → re-login. The first broken link is your culprit.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Role assigned, catalog correct, but the tile still doesn't appear. What's the classic missing step?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>User Comparison</strong> (and re-login). Assigning the role isn't enough — the generated authorization profile must be pushed to the user's master record via Compare in PFCG.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U9: Real-World Use Cases ═══ -->
+    <div class="unit" id="u9">
+      <div class="unit-tag">Unit 09 · Real World — Interactive</div>
+      <h2 class="unit-title">Roles &amp; Catalogs Across Jobs</h2>
+      <p class="unit-sub">The same model shapes every real deployment — different jobs get different keyrings. Pick a job profile to see a realistic role setup.</p>
+
+      <div class="cc-tabs" style="margin:12px 0;">
+        <div class="cc-tab cat on" id="uc-sales" onclick="ucPick('sales',this)" style="min-width:110px;"><div class="cev">💼</div><div class="ctl">Sales Rep</div></div>
+        <div class="cc-tab grp" id="uc-hr" onclick="ucPick('hr',this)" style="min-width:110px;"><div class="cev">👥</div><div class="ctl">HR Admin</div></div>
+        <div class="cc-tab role" id="uc-fin" onclick="ucPick('fin',this)" style="min-width:110px;"><div class="cev">💰</div><div class="ctl">Finance</div></div>
+        <div class="cc-tab cat" id="uc-mgr" onclick="ucPick('mgr',this)" style="min-width:110px;"><div class="cev">📊</div><div class="ctl">Manager</div></div>
+      </div>
+      <table class="tbl">
+        <thead><tr><th>Element</th><th id="uc-h">Setup</th></tr></thead>
+        <tbody id="uc-body"></tbody>
+      </table>
+
+      <div class="sec">A Full Example: Onboarding a New Sales Rep</div>
+      <div class="res-steps" style="margin-top:6px;">
+        <div class="res-step done"><div class="rs-icon">🪪</div><div class="rs-text">Assign existing <strong>Z_SALES_REP</strong> role to the new hire in PFCG</div></div>
+        <div class="res-step done"><div class="rs-icon">🔄</div><div class="rs-text">Run <strong>User Comparison</strong> to push the profile</div></div>
+        <div class="res-step done"><div class="rs-icon">📚</div><div class="rs-text">They instantly get the <strong>Sales catalog</strong> (Orders, Customers, Quotations)</div></div>
+        <div class="res-step done"><div class="rs-icon">🗂️</div><div class="rs-text">Their home page shows the <strong>Daily Sales group</strong> tiles</div></div>
+        <div class="res-step done"><div class="rs-icon">✅</div><div class="rs-text">Zero per-app setup — the role did everything</div></div>
+      </div>
+
+      <div class="tip-box">
+        <div class="tb-icon">🎯</div>
+        <div class="tb-text"><strong>Why this model scales:</strong> you design a role <em>once per job</em>, not once per person. 500 sales reps? One role, 500 assignments. Change the sales apps? Update one catalog and everyone gets it. Roles + catalogs turn access management from chaos into a tidy, reusable system.</div>
+      </div>
+    </div>
+
+    <!-- ═══ U10: Knowledge Check ═══ -->
+    <div class="unit" id="u10">
+      <div class="unit-tag">Unit 10 · Knowledge Check — Interactive</div>
+      <h2 class="unit-title">Knowledge Check</h2>
+      <p class="unit-sub">Tap the answer you think is right for instant feedback.</p>
+
+      <div class="quiz">
+        <div class="quiz-q">1. What does a catalog do?</div>
+        <button class="qopt" onclick="pick(this,false)">A. Shows tiles on the home page</button>
+        <button class="qopt" onclick="pick(this,true)">B. Defines which apps a user may access (App Finder)</button>
+        <button class="qopt" onclick="pick(this,false)">C. Stores the app's source code</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">2. What is the job of a group?</div>
+        <button class="qopt" onclick="pick(this,true)">A. Arrange tiles for quick access on the home page</button>
+        <button class="qopt" onclick="pick(this,false)">B. Grant backend authorizations</button>
+        <button class="qopt" onclick="pick(this,false)">C. Deploy the app</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">3. Which transaction maintains roles in the ABAP backend?</div>
+        <button class="qopt" onclick="pick(this,false)">A. SE80</button>
+        <button class="qopt" onclick="pick(this,true)">B. PFCG</button>
+        <button class="qopt" onclick="pick(this,false)">C. SEGW</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">4. Role assigned but user sees no tiles. Classic missing step?</div>
+        <button class="qopt" onclick="pick(this,true)">A. User Comparison (+ re-login)</button>
+        <button class="qopt" onclick="pick(this,false)">B. Restart the server</button>
+        <button class="qopt" onclick="pick(this,false)">C. Rebuild the app</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">5. A tile fires an intent like <code>Product-display</code>. What resolves it to an app?</div>
+        <button class="qopt" onclick="pick(this,true)">A. A target mapping</button>
+        <button class="qopt" onclick="pick(this,false)">B. The group</button>
+        <button class="qopt" onclick="pick(this,false)">C. The user's password</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">6. A composite role is…</div>
+        <button class="qopt" onclick="pick(this,false)">A. A role with no users</button>
+        <button class="qopt" onclick="pick(this,true)">B. A bundle of several single roles</button>
+        <button class="qopt" onclick="pick(this,false)">C. A deleted role</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">7. Catalog = ___ , Group = ___ ?</div>
+        <button class="qopt" onclick="pick(this,true)">A. CAN access ; SEES on home page</button>
+        <button class="qopt" onclick="pick(this,false)">B. SEES on home page ; CAN access</button>
+        <button class="qopt" onclick="pick(this,false)">C. They are identical</button>
+        <div class="qfb"></div>
+      </div>
+
+      <div class="tip-box">
+        <div class="tb-icon">🎯</div>
+        <div class="tb-text"><strong>One-line summary:</strong> A <strong>catalog</strong> says what a user <em>can</em> access; a <strong>group</strong> arranges tiles they <em>see</em>; a <strong>PFCG role</strong> ties catalogs + groups + authorizations to <strong>users</strong>. Build once per job, assign to many — App → Tile → Catalog → Role → User, and never forget User Comparison.</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+/* ── Navigation ── */
+const TOTAL=10;
+const titles=['','Why Roles & Catalogs?','Tiles & Semantic Objects','Catalog vs Group','What Is a PFCG Role?','Building a Role','Tile → User Access','Launchpad Hierarchy','Pitfalls & Fixes','Real-World Use Cases','Knowledge Check'];
+let cur=1;
+function go(n,btn){
+  document.querySelectorAll('.unit').forEach(u=>u.classList.remove('active'));
+  document.querySelectorAll('.rail-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('u'+n).classList.add('active');
+  if(btn)btn.classList.add('active');
+  else document.querySelectorAll('.rail-item')[n-1].classList.add('active');
+  cur=n;
+  document.getElementById('ttl').textContent=titles[n];
+  document.getElementById('prog').style.width=Math.round(n/TOTAL*100)+'%';
+  document.querySelector('.content').scrollTop=0;
+}
+function nxt(){const n=cur<TOTAL?cur+1:1;go(n,document.querySelectorAll('.rail-item')[n-1]);}
+function rev(btn){const a=btn.nextElementSibling;a.classList.toggle('on');btn.textContent=a.classList.contains('on')?'Hide Answer':'Reveal Answer';}
+
+/* ── Unit 3: catalog/group/role concept ── */
+const ccData={
+  cat:{title:'📚 Catalog',
+    def:'A <strong>catalog</strong> is the collection of apps (tiles + target mappings) a user is <em>allowed</em> to access. Users find catalog apps through the <strong>App Finder</strong>. It defines the <em>scope</em> of access, not the home-page layout.',
+    analogy:'🍽️ <b>Like a full restaurant menu:</b> it lists everything you\'re allowed to order. It doesn\'t put food on your table — it defines what\'s available to you.'},
+  grp:{title:'🗂️ Group',
+    def:'A <strong>group</strong> arranges a handful of tiles <em>together on the home page</em> for quick access. It\'s about <em>visibility and convenience</em>, not authorization. Tiles in a group should also live in a catalog the user has.',
+    analogy:'🍽️ <b>Like the "today\'s specials" board:</b> a curated few items shown up front for convenience — but you can still order anything from the full menu (catalog).'},
+  role:{title:'🪪 Role',
+    def:'A <strong>PFCG role</strong> ties it all together: it <em>references</em> catalogs and groups, carries the backend authorizations, and is <em>assigned to users</em>. It\'s the bridge from "content exists" to "this person can use it."',
+    analogy:'🔑 <b>Like a keyring for a job:</b> "Sales Rep" holds exactly the keys (catalogs/groups) that job needs. Give the keyring to any sales rep and they\'re instantly equipped.'}
+};
+function ccPick(key,el){
+  document.querySelectorAll('.cc-tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  const d=ccData[key];
+  document.getElementById('cc-title').innerHTML=d.title;
+  document.getElementById('cc-def').innerHTML=d.def;
+  document.getElementById('cc-analogy').innerHTML=d.analogy;
+}
+
+/* ── Unit 5: PFCG animation (pause) ── */
+const pfSteps=['pf0','pf1','pf2','pf3','pf4','pf5'];
+const pfConn=['pfc0','pfc1','pfc2','pfc3','pfc4'];
+let pfTimer=null,pfIdx=0,pfPaused=false,pfRunning=false;
+function pfReset(){clearTimeout(pfTimer);pfSteps.forEach(id=>document.getElementById(id).classList.remove('lit'));pfConn.forEach(id=>document.getElementById(id).classList.remove('lit'));}
+function pfStep(){
+  if(pfPaused)return;
+  if(pfIdx<pfSteps.length){
+    document.getElementById(pfSteps[pfIdx]).classList.add('lit');
+    if(pfIdx>0)document.getElementById(pfConn[pfIdx-1]).classList.add('lit');
+    pfIdx++;pfTimer=setTimeout(pfStep,1200);
+  } else pfDone();
+}
+function pfDone(){pfRunning=false;pfPaused=false;const p=document.getElementById('pf-play');p.style.display='';p.innerHTML='▶ Build again';document.getElementById('pf-pause').style.display='none';}
+function playPfcg(){
+  if(pfRunning&&pfPaused){pfPaused=false;document.getElementById('pf-play').style.display='none';document.getElementById('pf-pause').style.display='';pfStep();return;}
+  pfReset();pfIdx=0;pfPaused=false;pfRunning=true;
+  document.getElementById('pf-play').style.display='none';const pb=document.getElementById('pf-pause');pb.style.display='';pb.innerHTML='⏸ Pause';pfStep();
+}
+function pausePfcg(){if(!pfRunning)return;pfPaused=true;clearTimeout(pfTimer);document.getElementById('pf-pause').style.display='none';const p=document.getElementById('pf-play');p.style.display='';p.innerHTML='▶ Resume';}
+
+/* ── Unit 6: chain animation (pause) ── */
+const chSteps=['chs0','chs1','chs2','chs3','chs4','chs5','chs6'];
+let chTimer=null,chIdx=0,chPaused=false,chRunning=false;
+function chReset(){clearTimeout(chTimer);chSteps.forEach(id=>{const e=document.getElementById(id);e.classList.remove('lit','done');});}
+function chStep(){
+  if(chPaused)return;
+  if(chIdx>0){const p=document.getElementById(chSteps[chIdx-1]);p.classList.remove('lit');p.classList.add('done');}
+  if(chIdx<chSteps.length){document.getElementById(chSteps[chIdx]).classList.add('lit');chIdx++;chTimer=setTimeout(chStep,1050);}
+  else chDone();
+}
+function chDone(){chRunning=false;chPaused=false;const p=document.getElementById('ch-play');p.style.display='';p.innerHTML='▶ Trace again';document.getElementById('ch-pause').style.display='none';}
+function playChain(){
+  if(chRunning&&chPaused){chPaused=false;document.getElementById('ch-play').style.display='none';document.getElementById('ch-pause').style.display='';chStep();return;}
+  chReset();chIdx=0;chPaused=false;chRunning=true;
+  document.getElementById('ch-play').style.display='none';const pb=document.getElementById('ch-pause');pb.style.display='';pb.innerHTML='⏸ Pause';chStep();
+}
+function pauseChain(){if(!chRunning)return;chPaused=true;clearTimeout(chTimer);document.getElementById('ch-pause').style.display='none';const p=document.getElementById('ch-play');p.style.display='';p.innerHTML='▶ Resume';}
+
+/* ── Unit 7: launchpad hierarchy ── */
+const lpInfo={
+  role:'<strong>Role</strong> — the top-level container assigned to a user. It references the catalogs and groups below it, and carries the authorizations. One role can serve many users.',
+  cat:'<strong>Catalog</strong> — sits inside the role. Lists the apps the user may access, surfaced through the App Finder. The authorization scope.',
+  tile:'<strong>Tiles + Target Mappings</strong> — live inside the catalog. The tile is the launch button; the target mapping resolves its intent (e.g. <code>Product-display</code>) to the actual app.',
+  grp:'<strong>Group</strong> — also inside the role. Arranges selected tiles on the home page for quick access. Visibility, not authorization.',
+  space:'<strong>Space &amp; Page</strong> — the modern alternative to groups. Tiles go on <em>pages</em>, pages group under <em>spaces</em>. Same catalog/role logic underneath; only the home-page layout differs.'
+};
+function lpPick(key,el){
+  document.querySelectorAll('.lp-row').forEach(r=>r.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('lp-detail').innerHTML=lpInfo[key];
+}
+
+/* ── Unit 8: pitfall decoder ── */
+function errToggle(card){
+  const fix=card.querySelector('.err-fix');
+  const hint=card.querySelector('.err-hint');
+  const open=fix.classList.toggle('on');
+  hint.style.display=open?'none':'block';
+}
+
+/* ── Unit 9: use-case selector ── */
+const ucData={
+  sales:{h:'Sales Rep (Z_SALES_REP)',rows:[['📚 Catalog','Sales Apps — Orders, Customers, Quotations'],['🗂️ Group','Daily Sales — top tiles on the home page'],['🪪 Role','Single role, assigned to all sales reps'],['🔐 Auth','OData services for sales orders &amp; customers']]},
+  hr:{h:'HR Admin (Z_HR_ADMIN)',rows:[['📚 Catalog','HR Apps — Employees, Leave, Payroll view'],['🗂️ Group','People Ops — onboarding &amp; leave tiles'],['🪪 Role','Single role for HR administrators'],['🔐 Auth','Employee data services (sensitive — scoped)']]},
+  fin:{h:'Finance (Z_FIN_CLERK)',rows:[['📚 Catalog','Finance Apps — Invoices, GL, Payments'],['🗂️ Group','Daily Finance — invoice &amp; payment tiles'],['🪪 Role','Single role for finance clerks'],['🔐 Auth','Posting &amp; display services, company-code scoped']]},
+  mgr:{h:'Manager (composite)',rows:[['📚 Catalog','Reports + team apps across areas'],['🗂️ Group','My Team — approvals &amp; dashboards'],['🪪 Role','Composite: Sales Rep + Reports + Team Lead'],['🔐 Auth','Read-heavy + approval authorizations']]}
+};
+function ucPick(key,el){
+  document.querySelectorAll('#u9 .cc-tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  const d=ucData[key];
+  document.getElementById('uc-h').textContent=d.h;
+  document.getElementById('uc-body').innerHTML=d.rows.map(r=>
+    '<tr><td><strong>'+r[0]+'</strong></td><td>'+r[1]+'</td></tr>').join('');
+}
+
+/* ── Unit 10: knowledge check ── */
+function pick(btn,correct){
+  const quiz=btn.closest('.quiz');
+  if(quiz.dataset.done==='1')return;
+  quiz.dataset.done='1';
+  const fb=quiz.querySelector('.qfb');
+  if(correct){
+    btn.classList.add('correct');
+    fb.innerHTML='<span style="color:#107e3e;font-weight:700;">✓ Correct!</span>';
+  } else {
+    btn.classList.add('wrong');
+    quiz.querySelectorAll('.qopt').forEach(o=>{if(o.getAttribute('onclick').includes('true'))o.classList.add('correct');});
+    fb.innerHTML='<span style="color:#bb0000;font-weight:700;">✗ Not quite</span> — the highlighted option is correct.';
+  }
+  fb.classList.add('on');
+}
+
+/* ── Init defaults ── */
+ccPick('cat',document.getElementById('cc-cat'));
+lpPick('role',document.getElementById('lp-role'));
+ucPick('sales',document.getElementById('uc-sales'));
+</script>
+</body>
+</html>
