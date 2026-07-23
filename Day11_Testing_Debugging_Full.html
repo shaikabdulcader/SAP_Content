@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 11 — Testing &amp; Debugging (Complete) | Animated Visualizer</title>
+<style>
+:root{
+  --sap-blue:#0070f2;--sap-dark:#003169;--sap-green:#107e3e;
+  --sap-orange:#e9730c;--sap-red:#bb0000;--sap-purple:#6a2c8c;
+  --bg:#f5f7fa;--line:#e0e6ef;--ink:#1d2d44;--ink-dim:#5a6a7e;
+  --accent-soft:rgba(0,112,242,.08);
+  --qunit:#0070f2;--qunit-bg:#e6f0fd;--qunit-bd:#b8d7f7;
+  --opa:#107e3e;--opa-bg:#e8f5ee;--opa-bd:#b5dcc5;
+  --dbg:#e9730c;--dbg-bg:#fdf0e4;--dbg-bd:#f3cfa8;
+}
+*,*::before,*::after{box-sizing:border-box;}
+html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);}
+.app{display:grid;grid-template-columns:300px 1fr;height:100vh;overflow:hidden;}
+.rail{background:var(--sap-dark);display:flex;flex-direction:column;overflow:hidden;}
+.rail-head{padding:22px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1);}
+.rail-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;margin-bottom:10px;text-transform:uppercase;}
+.rail-head h1{margin:0;font-size:15px;font-weight:700;color:#fff;line-height:1.35;}
+.rail-head p{margin:5px 0 0;font-size:11px;color:rgba(255,255,255,.45);}
+.rail-list{flex:1;overflow-y:auto;padding:10px 8px;}
+.rail-list::-webkit-scrollbar{width:4px;}
+.rail-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);}
+.rail-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;font-size:12.5px;color:rgba(255,255,255,.5);cursor:pointer;margin-bottom:2px;border-left:3px solid transparent;transition:all .18s;user-select:none;}
+.rail-item .num{font-size:10px;font-weight:700;color:rgba(255,255,255,.25);min-width:18px;}
+.rail-item .lbl{flex:1;line-height:1.3;}
+.rail-item .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.12);flex-shrink:0;}
+.rail-item:hover{background:rgba(255,255,255,.07);color:#fff;}
+.rail-item.active{background:rgba(0,112,242,.28);color:#fff;border-left-color:var(--sap-blue);}
+.rail-item.active .num{color:#5bbbff;}
+.rail-item.active .dot{background:#5bbbff;}
+.rail-footer{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:10.5px;color:rgba(255,255,255,.3);}
+.rail-footer span{color:rgba(255,255,255,.6);font-weight:600;}
+.main{display:flex;flex-direction:column;overflow:hidden;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:54px;background:#fff;border-bottom:1px solid var(--line);flex-shrink:0;}
+.topbar .breadcrumb{font-size:12px;color:var(--ink-dim);}
+.topbar .breadcrumb strong{color:var(--ink);font-weight:600;}
+.topbar .pill{font-size:11px;padding:4px 14px;border-radius:20px;background:#e8f4fd;color:var(--sap-blue);font-weight:600;cursor:pointer;border:1px solid #c2dff7;transition:all .18s;}
+.topbar .pill:hover{background:var(--sap-blue);color:#fff;}
+.prog-bar{height:3px;background:var(--line);flex-shrink:0;}
+.prog-fill{height:100%;background:var(--sap-blue);transition:width .4s ease;}
+.content{flex:1;overflow-y:auto;padding:26px 32px 60px;}
+.content::-webkit-scrollbar{width:6px;}
+.content::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+.unit{display:none;}
+.unit.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.unit-tag{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--sap-blue);margin-bottom:8px;}
+.unit-title{font-size:22px;font-weight:700;color:var(--ink);margin:0 0 6px;}
+.unit-sub{font-size:13.5px;color:var(--ink-dim);line-height:1.65;margin:0 0 20px;}
+.sec{font-size:14.5px;font-weight:700;color:var(--sap-dark);margin:22px 0 10px;display:flex;align-items:center;gap:8px;}
+.sec::before{content:'';display:inline-block;width:4px;height:16px;background:var(--sap-blue);border-radius:2px;}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:12px 0;}
+.card{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:15px;transition:all .18s;}
+.card:hover{border-color:var(--sap-blue);box-shadow:0 2px 12px rgba(0,112,242,.1);transform:translateY(-1px);}
+.card .ci{font-size:22px;margin-bottom:8px;}
+.card .ct{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.card .cb{font-size:12px;color:var(--ink-dim);line-height:1.55;}
+.info{display:flex;gap:12px;padding:13px 16px;border-radius:10px;margin:12px 0;}
+.info.tip{background:#fff8e6;border:1.5px solid #f5c842;}
+.info.note{background:#e8f4fd;border:1.5px solid #c2dff7;}
+.info.green{background:#e8f5ee;border:1.5px solid #b5dcc5;}
+.info.red{background:#fdecea;border:1.5px solid #f3b0a8;}
+.info .ii{font-size:18px;flex-shrink:0;}
+.info .it{font-size:12.5px;line-height:1.65;}
+.info.tip .it{color:#6b4f00;}
+.info.note .it{color:#002060;}
+.info.green .it{color:#0a3018;}
+.info.red .it{color:#6b0f07;}
+.info .it code{background:rgba(0,0,0,.08);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.tbl{width:100%;border-collapse:collapse;margin:12px 0;font-size:12.5px;}
+.tbl th{background:var(--sap-dark);color:#fff;padding:9px 13px;text-align:left;font-size:11px;font-weight:700;}
+.tbl th:first-child{border-radius:7px 0 0 0;}.tbl th:last-child{border-radius:0 7px 0 0;}
+.tbl td{padding:9px 13px;border-bottom:1px solid var(--line);vertical-align:top;}
+.tbl tr:hover td{background:var(--accent-soft);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.quiz{background:#f0f7ff;border:1.5px solid #c2dff7;border-radius:10px;padding:15px 18px;margin:12px 0;}
+.quiz-q{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:10px;}
+.rev-btn{background:var(--sap-blue);color:#fff;border:none;padding:7px 16px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s;}
+.rev-btn:hover{background:var(--sap-dark);}
+.quiz-a{display:none;margin-top:11px;font-size:13px;color:var(--ink);line-height:1.65;padding-top:10px;border-top:1px solid #c2dff7;}
+.quiz-a.on{display:block;}
+.quiz-a code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.chk{color:var(--sap-green);font-weight:700;}
+.tip-box{display:flex;gap:12px;padding:16px 18px;background:linear-gradient(135deg,#003169,#0050b3);border-radius:12px;margin:18px 0;color:#fff;}
+.tb-icon{font-size:22px;flex-shrink:0;}
+.tb-text{font-size:13px;line-height:1.7;}
+.tb-text strong{color:#ffde6a;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0;}
+@media(max-width:760px){.two-col{grid-template-columns:1fr;}}
+code{font-family:'JetBrains Mono',Consolas,monospace;}
+.mono-block{background:#0d1520;border-radius:10px;padding:14px 16px;margin:12px 0;font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.82);line-height:1.7;border:1.5px solid #1e3050;overflow-x:auto;white-space:pre;}
+.mono-block .tag{color:#5bbbff;}.mono-block .attr{color:#ffaa44;}.mono-block .val{color:#4fd97a;}.mono-block .cmt{color:rgba(255,255,255,.4);}.mono-block .kw{color:#ff9de2;}.mono-block .fn{color:#ffd966;}.mono-block .key{color:#5bbbff;}.mono-block .num{color:#f78c6c;}
+.mono-cap{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-dim);margin:14px 0 -4px;display:flex;align-items:center;gap:7px;}
+.mono-cap .fp{font-family:'JetBrains Mono',monospace;background:#eef2f8;color:var(--sap-dark);padding:2px 8px;border-radius:5px;font-size:10px;text-transform:none;letter-spacing:0;}
+.anim-btn{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.2);padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;margin-bottom:12px;}
+.anim-btn:hover{background:rgba(0,112,242,.4);border-color:#0070f2;}
+.svg-wrap{background:#0d1a2e;border-radius:14px;padding:20px;margin:16px 0;overflow:hidden;border:1.5px solid #1e3050;}
+.diagram{background:#fbfcfe;border:1.5px solid var(--line);border-radius:14px;padding:18px;margin:14px 0;}
+.diagram svg{display:block;width:100%;height:auto;}
+.dg-cap{font-size:11px;color:var(--ink-dim);text-align:center;margin-top:8px;font-style:italic;}
+.dg-node-txt{font-size:12px;font-weight:700;}
+.dg-node-sub{font-size:9px;}
+.dg-edge-lbl{font-size:9.5px;fill:var(--ink-dim);font-weight:600;}
+.res-steps{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+.res-step{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);font-size:12px;color:rgba(255,255,255,.72);transition:all .5s ease;}
+.res-step.lit{background:rgba(0,112,242,.2);border-color:#0070f2;color:#fff;}
+.res-step.done{background:rgba(16,126,62,.2);border-color:#4fd97a;color:rgba(255,255,255,.85);}
+.res-step .rs-icon{font-size:16px;flex-shrink:0;}
+.res-step .rs-text{flex:1;}
+.res-step .rs-text strong{color:#5bbbff;}
+.res-step.lit .rs-text strong{color:#a9d8ff;}
+.res-step .rs-t{font-family:'JetBrains Mono',monospace;font-size:10px;color:#ffd966;margin-left:auto;flex-shrink:0;}
+.cc-lab{background:#0d1a2e;border-radius:14px;padding:20px;margin:14px 0;border:1.5px solid #1e3050;}
+.cc-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.cc-tab{flex:1;min-width:120px;border-radius:10px;padding:12px;cursor:pointer;transition:all .18s;border:1.5px solid;text-align:center;background:rgba(255,255,255,.05);}
+.cc-tab .cev{font-size:20px;}
+.cc-tab .ctl{font-size:12px;font-weight:700;margin-top:3px;color:#fff;}
+.cc-tab.qunit{border-color:rgba(0,112,242,.5);}.cc-tab.opa{border-color:rgba(16,126,62,.5);}.cc-tab.dbg{border-color:rgba(233,115,12,.5);}
+.cc-tab.qunit.on{background:rgba(0,112,242,.28);border-color:#5bbbff;}
+.cc-tab.opa.on{background:rgba(16,126,62,.28);border-color:#4fd97a;}
+.cc-tab.dbg.on{background:rgba(233,115,12,.28);border-color:#ffaa44;}
+.cc-tab:hover{transform:translateY(-2px);}
+.cc-body{background:#0d1520;border-radius:10px;padding:16px;border:1.5px solid #1e3050;}
+.cc-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.cc-def{font-size:12.5px;color:#e8eef6;line-height:1.7;margin-bottom:12px;}
+.cc-def strong{color:#5bbbff;}
+.cc-analogy{background:rgba(255,255,255,.05);border-radius:8px;padding:11px 13px;font-size:12px;color:#bfe3c8;line-height:1.6;border:1px dashed rgba(255,255,255,.16);}
+.cc-analogy b{color:#8fe0a6;}
+.dt-lab{background:#0d1520;border-radius:12px;margin:14px 0;border:1.5px solid #1e3050;overflow:hidden;}
+.dt-tabs{display:flex;background:#161d2e;border-bottom:1.5px solid #1e3050;flex-wrap:wrap;}
+.dt-tab{padding:10px 15px;font-size:11.5px;font-weight:600;color:rgba(255,255,255,.6);cursor:pointer;border-bottom:2px solid transparent;transition:all .16s;font-family:'JetBrains Mono',monospace;}
+.dt-tab:hover{color:#fff;}
+.dt-tab.on{color:#5bbbff;border-bottom-color:#5bbbff;background:#0d1520;}
+.dt-body{padding:16px 18px;font-size:12.5px;color:#e8eef6;line-height:1.7;min-height:120px;}
+.dt-body strong{color:#5bbbff;}
+.dt-body code{background:rgba(0,0,0,.4);padding:1px 6px;border-radius:4px;color:#4fd97a;font-size:11.5px;}
+.dt-when{margin-top:10px;font-size:11.5px;color:#ffcf8f;padding-top:9px;border-top:1px dashed rgba(255,255,255,.14);}
+.testbar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;margin:8px 0;border:1.5px solid;}
+.testbar.pass{background:#e8f5ee;border-color:#b5dcc5;color:#0a3018;}
+.testbar.fail{background:#fdecea;border-color:#f3b0a8;color:#6b0f07;}
+.testbar .tb-i{font-size:15px;}
+.pyramid{display:flex;flex-direction:column;align-items:center;gap:5px;margin:14px 0;}
+.pyr-row{border-radius:8px;padding:11px 14px;text-align:center;border:1.5px solid;transition:all .16s;cursor:pointer;}
+.pyr-row:hover{transform:scale(1.02);}
+.pyr-row .pr-t{font-size:12.5px;font-weight:700;}
+.pyr-row .pr-s{font-size:10.5px;margin-top:1px;}
+.pyr-row.e2e{width:40%;background:#f2e9f7;border-color:#d8bfe6;}
+.pyr-row.e2e .pr-t{color:var(--sap-purple);}
+.pyr-row.opa{width:62%;background:var(--opa-bg);border-color:var(--opa-bd);}
+.pyr-row.opa .pr-t{color:var(--opa);}
+.pyr-row.unit{width:84%;background:var(--qunit-bg);border-color:var(--qunit-bd);}
+.pyr-row.unit .pr-t{color:var(--qunit);}
+.err-lab{display:flex;flex-direction:column;gap:10px;margin:14px 0;}
+.err-card{border:1.5px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;cursor:pointer;transition:all .16s;}
+.err-card:hover{box-shadow:0 2px 12px rgba(187,0,0,.08);border-color:#f3b0a8;}
+.err-msg{background:#2b0b09;color:#ff9d94;font-family:'JetBrains Mono',monospace;font-size:12px;padding:11px 14px;display:flex;align-items:center;gap:8px;}
+.err-msg::before{content:'✕';color:#ff5c4d;font-weight:800;}
+.err-fix{padding:12px 14px;font-size:12.5px;color:var(--ink);line-height:1.6;display:none;background:#fff;}
+.err-fix.on{display:block;}
+.err-fix strong{color:var(--sap-red);}
+.err-fix code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
+.err-hint{font-size:11px;color:var(--ink-dim);padding:0 14px 10px;}
+.qopt{display:block;width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:10px 14px;font-size:12.5px;color:var(--ink);cursor:pointer;margin:6px 0;transition:all .15s;font-family:inherit;}
+.qopt:hover{border-color:var(--sap-blue);background:var(--accent-soft);}
+.qopt.correct{border-color:var(--sap-green);background:#e8f5ee;color:#0a3018;font-weight:600;}
+.qopt.wrong{border-color:var(--sap-red);background:#fdecea;color:#660000;}
+.qfb{font-size:12.5px;margin-top:8px;line-height:1.6;display:none;}
+.qfb.on{display:block;}
+.status-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:12px 0;}
+.status-chip{border-radius:8px;padding:10px 12px;border:1.5px solid;cursor:pointer;transition:all .16s;}
+.status-chip:hover{transform:translateY(-2px);}
+.status-chip .sc-code{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:800;}
+.status-chip .sc-lbl{font-size:11px;margin-top:2px;font-weight:600;}
+.status-chip.s2{background:var(--opa-bg);border-color:var(--opa-bd);}.status-chip.s2 .sc-code{color:var(--opa);}
+.status-chip.s4{background:var(--dbg-bg);border-color:var(--dbg-bd);}.status-chip.s4 .sc-code{color:var(--dbg);}
+.status-chip.s5{background:#fdecea;border-color:#f3b0a8;}.status-chip.s5 .sc-code{color:var(--sap-red);}
+.status-detail{margin-top:10px;background:#0d1a2e;border:1.5px solid #1e3050;border-radius:10px;padding:14px 16px;font-size:12.5px;color:#e8eef6;line-height:1.7;min-height:50px;}
+.status-detail strong{color:#5bbbff;}
+.status-detail code{background:rgba(0,0,0,.4);padding:1px 6px;border-radius:4px;color:#4fd97a;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="rail">
+  <div class="rail-head">
+    <div class="rail-badge">📅 Day 11 · Complete</div>
+    <h1>Testing &amp; Debugging</h1>
+    <p>Fiori Tools · DevTools · QUnit/OPA5</p>
+  </div>
+  <div class="rail-list">
+    <div class="rail-item active" onclick="go(1,this)"><span class="num">01</span><span class="lbl">Testing vs Debugging</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(2,this)"><span class="num">02</span><span class="lbl">The Testing Pyramid</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(3,this)"><span class="num">03</span><span class="lbl">SAP Fiori Tools</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(4,this)"><span class="num">04</span><span class="lbl">Mock Data vs Real Backend</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(5,this)"><span class="num">05</span><span class="lbl">Chrome DevTools Panels</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(6,this)"><span class="num">06</span><span class="lbl">Breakpoints &amp; Debugging (Animated)</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(7,this)"><span class="num">07</span><span class="lbl">Network &amp; OData Status Codes</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(8,this)"><span class="num">08</span><span class="lbl">Binding &amp; Event Debugging</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(9,this)"><span class="num">09</span><span class="lbl">QUnit Unit Testing</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(10,this)"><span class="num">10</span><span class="lbl">OPA5 Integration Testing</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(11,this)"><span class="num">11</span><span class="lbl">Errors &amp; Systematic Debugging</span><span class="dot"></span></div>
+    <div class="rail-item" onclick="go(12,this)"><span class="num">12</span><span class="lbl">Workflow &amp; Knowledge Check</span><span class="dot"></span></div>
+  </div>
+  <div class="rail-footer"><span>Parul GC · ODD SEM 2026</span> · SAP Training</div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="breadcrumb">Day 11 — Testing &amp; Debugging &rsaquo; <strong id="ttl">Testing vs Debugging</strong></div>
+    <button class="pill" onclick="nxt()">Next →</button>
+  </div>
+  <div class="prog-bar"><div class="prog-fill" id="prog" style="width:8.3%"></div></div>
+  <div class="content">
+
+    <!-- U1 -->
+    <div class="unit active" id="u1">
+      <div class="unit-tag">Unit 01 · Foundation</div>
+      <h2 class="unit-title">Testing vs Debugging</h2>
+      <p class="unit-sub"><strong>Testing</strong> checks whether an application behaves according to the business requirement. <strong>Debugging</strong> is locating, understanding and fixing a defect that testing found. One asks "does it work?", the other asks "why doesn't it?"</p>
+
+      <div class="two-col">
+        <div style="background:var(--opa-bg);border:1.5px solid var(--opa-bd);border-radius:10px;padding:15px;">
+          <div style="font-size:13px;font-weight:700;color:var(--opa);margin-bottom:6px;">✅ Testing verifies…</div>
+          <div style="font-size:12px;color:#0b4d47;line-height:1.8;">The list loads · search &amp; filter work · orders open · mandatory fields validate · Save sends correct data · success/error messages show · unauthorized users are blocked.</div>
+        </div>
+        <div style="background:var(--dbg-bg);border:1.5px solid var(--dbg-bd);border-radius:10px;padding:15px;">
+          <div style="font-size:13px;font-weight:700;color:var(--dbg);margin-bottom:6px;">🔍 Debugging investigates…</div>
+          <div style="font-size:12px;color:#7a3d0e;line-height:1.8;">Which line failed · what a variable actually held · whether the event fired · whether the request was sent · what the server returned · where reality diverged from intent.</div>
+        </div>
+      </div>
+
+      <div class="info green">
+        <div class="ii">🚗</div>
+        <div class="it"><strong>Real-world analogy — a car factory:</strong> before delivery the company <em>tests</em> that the engine starts, brakes work, lights turn on, steering responds. When a brake fails, the engineer <em>debugs</em> — checking fluid, cable, pedal, pads, control unit — until the faulty part is found. Testing proves the whole car; debugging hunts one fault.</div>
+      </div>
+
+      <div class="sec">The Testing &amp; Debugging Lifecycle</div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 250" role="img" aria-label="Testing and debugging lifecycle">
+          <defs><marker id="a1" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#9aa7b8"/></marker></defs>
+          <rect x="270" y="8" width="180" height="34" rx="8" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1.5"/>
+          <text x="360" y="29" text-anchor="middle" class="dg-node-txt" fill="#5b21b6">Business Requirement</text>
+          <line x1="360" y1="42" x2="360" y2="58" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#a1)"/>
+          <rect x="285" y="60" width="150" height="34" rx="8" fill="#e6f0fd" stroke="#b8d7f7" stroke-width="1.5"/>
+          <text x="360" y="81" text-anchor="middle" class="dg-node-txt" fill="#0070f2">Develop Fiori App</text>
+          <line x1="360" y1="94" x2="360" y2="110" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#a1)"/>
+          <rect x="295" y="112" width="130" height="34" rx="8" fill="#e6f0fd" stroke="#b8d7f7" stroke-width="1.5"/>
+          <text x="360" y="133" text-anchor="middle" class="dg-node-txt" fill="#0070f2">Execute Tests</text>
+          <path d="M360,146 L392,168 L360,190 L328,168 Z" fill="#fff8e6" stroke="#f5c842" stroke-width="1.5"/>
+          <text x="360" y="172" text-anchor="middle" class="dg-node-txt" fill="#8a6d00" font-size="10">Error?</text>
+          <line x1="328" y1="168" x2="150" y2="168" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#a1)"/>
+          <text x="245" y="160" text-anchor="middle" class="dg-edge-lbl" fill="#107e3e">No</text>
+          <rect x="30" y="151" width="118" height="34" rx="8" fill="#e8f5ee" stroke="#b5dcc5" stroke-width="1.5"/>
+          <text x="89" y="172" text-anchor="middle" class="dg-node-txt" fill="#107e3e">🚀 Release</text>
+          <line x1="392" y1="168" x2="570" y2="168" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#a1)"/>
+          <text x="480" y="160" text-anchor="middle" class="dg-edge-lbl" fill="#bb0000">Yes</text>
+          <rect x="572" y="151" width="130" height="34" rx="8" fill="#fdf0e4" stroke="#f3cfa8" stroke-width="1.5"/>
+          <text x="637" y="172" text-anchor="middle" class="dg-node-txt" fill="#e9730c">🔍 Debug</text>
+          <line x1="637" y1="185" x2="637" y2="205" stroke="#9aa7b8" stroke-width="1.6"/>
+          <rect x="560" y="207" width="150" height="32" rx="8" fill="#fdf0e4" stroke="#f3cfa8" stroke-width="1.5"/>
+          <text x="635" y="227" text-anchor="middle" class="dg-node-txt" fill="#e9730c" font-size="11">Correct the Code</text>
+          <line x1="560" y1="223" x2="440" y2="223" stroke="#9aa7b8" stroke-width="1.6"/>
+          <line x1="440" y1="223" x2="440" y2="129" stroke="#9aa7b8" stroke-width="1.6"/>
+          <line x1="440" y1="129" x2="425" y2="129" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#a1)"/>
+          <text x="455" y="180" text-anchor="middle" class="dg-node-sub" fill="#b5652a" transform="rotate(90 455 180)">retest</text>
+        </svg>
+        <div class="dg-cap">Testing finds it · debugging explains it · fixing removes it · retesting confirms it.</div>
+      </div>
+
+      <div class="sec">Why It Matters — a Small Defect, a Big Problem</div>
+      <div class="info red">
+        <div class="ii">🧮</div>
+        <div class="it">An invoice app should compute <code>Total = Quantity × Price</code>. If a typo makes it <code>Quantity + Price</code>, then for Quantity 10 and Price ₹500 the correct <strong>₹5,000</strong> becomes a wrong <strong>₹510</strong>. A single QUnit test on that function catches it <em>before</em> production.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: In the car analogy, what is the equivalent of a QUnit unit test?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> Checking <strong>one brake sensor</strong> in isolation. QUnit tests one small piece of logic on its own — like verifying a single component works before the whole car (the full app / OPA5 journey) is driven through a test route.</div>
+      </div>
+    </div>
+
+    <!-- U2 -->
+    <div class="unit" id="u2">
+      <div class="unit-tag">Unit 02 · Strategy</div>
+      <h2 class="unit-title">The Testing Pyramid</h2>
+      <p class="unit-sub">SAP Fiori uses four kinds of testing. The <strong>pyramid</strong> shows the healthy balance — many small fast tests at the base, fewer slow broad ones on top. Click each layer to explore.</p>
+
+      <div class="pyramid">
+        <div class="pyr-row e2e" onclick="pyrPick('e2e',this)"><div class="pr-t">🌐 End-to-End / Manual</div><div class="pr-s">few · slowest · whole business workflow</div></div>
+        <div class="pyr-row opa" onclick="pyrPick('opa',this)"><div class="pr-t">🎭 OPA5 — Integration</div><div class="pr-s">some · medium · parts working together in the UI</div></div>
+        <div class="pyr-row unit" onclick="pyrPick('unit',this)"><div class="pr-t">🧩 QUnit — Unit Tests</div><div class="pr-s">many · fastest · one small piece of code</div></div>
+      </div>
+      <div class="dt-lab"><div class="dt-body" id="pyr-detail" style="min-height:88px;"></div></div>
+
+      <div class="info green">
+        <div class="ii">📱</div>
+        <div class="it"><strong>Analogy — a phone factory:</strong> before assembling the whole phone, each component is tested — battery, camera, speaker, display, microphone (QUnit). Then the assembled phone is switched on and used (OPA5). Then it's shipped and used on a real network (end-to-end).</div>
+      </div>
+
+      <div class="sec">The Fourth Type — Regression Testing</div>
+      <div class="info note">
+        <div class="ii">🔁</div>
+        <div class="it"><strong>Regression testing</strong> ensures a new change hasn't broken existing features. Change the discount calculation, and regression tests re-confirm normal pricing, tax, existing-order display, and saving all still work. In practice, your existing QUnit + OPA5 suite <em>is</em> your regression net — re-run it after every change.</div>
+      </div>
+
+      <div class="info tip">
+        <div class="ii">⚖️</div>
+        <div class="it"><strong>Why a pyramid, not a rectangle?</strong> Lower levels have more tests because they're faster and target smaller code. Flipping it (mostly slow UI/manual tests) is the classic "ice-cream cone" anti-pattern — slow and brittle.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Which layer should contain the most tests, and why?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> The <strong>base — unit tests (QUnit)</strong>. They're fast and focus on small sections of code, so you write many. Fewer OPA5 integration tests sit above, and only a handful of end-to-end/manual tests at the very top.</div>
+      </div>
+    </div>
+
+    <!-- U3 -->
+    <div class="unit" id="u3">
+      <div class="unit-tag">Unit 03 · Tooling</div>
+      <h2 class="unit-title">SAP Fiori Tools</h2>
+      <p class="unit-sub"><strong>SAP Fiori tools</strong> is a collection of development extensions for SAP Business Application Studio and VS Code. It helps you create, run, configure and maintain Fiori apps — including running them for testing.</p>
+
+      <div class="sec">What Fiori Tools Can Do</div>
+      <div class="cards">
+        <div class="card"><div class="ci">🏗️</div><div class="ct">Generate</div><div class="cb">Scaffold a new Fiori app from a template and an OData service.</div></div>
+        <div class="card"><div class="ci">👁️</div><div class="ct">Preview</div><div class="cb">Run and preview the app in the browser as you build.</div></div>
+        <div class="card"><div class="ci">🔌</div><div class="ct">Connect / Mock</div><div class="cb">Bind to a real OData service — or run against local mock data.</div></div>
+        <div class="card"><div class="ci">⚙️</div><div class="ct">Configure</div><div class="cb">Edit pages, annotations and app config without hand-editing files.</div></div>
+        <div class="card"><div class="ci">🚀</div><div class="ct">Build &amp; Deploy</div><div class="cb">Package the app and deploy it to the target system.</div></div>
+        <div class="card"><div class="ci">🧪</div><div class="ct">Test</div><div class="cb">Run the automated QUnit and OPA5 test suites.</div></div>
+      </div>
+
+      <div class="sec">Flow Diagram — Development &amp; Testing Flow</div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 230" role="img" aria-label="Fiori tools development and testing flow">
+          <defs><marker id="a3" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#9aa7b8"/></marker></defs>
+          <rect x="270" y="8" width="180" height="38" rx="9" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1.5"/>
+          <text x="360" y="26" text-anchor="middle" class="dg-node-txt" fill="#5b21b6">BAS / VS Code</text>
+          <text x="360" y="40" text-anchor="middle" class="dg-node-sub" fill="#6d28d9">the IDE</text>
+          <line x1="360" y1="46" x2="360" y2="62" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#a3)"/>
+          <rect x="272" y="64" width="176" height="40" rx="9" fill="#e6f0fd" stroke="#b8d7f7" stroke-width="1.5"/>
+          <text x="360" y="82" text-anchor="middle" class="dg-node-txt" fill="#0070f2">SAP Fiori Tools</text>
+          <text x="360" y="96" text-anchor="middle" class="dg-node-sub" fill="#0050b3">generate · configure · preview · test</text>
+          <line x1="300" y1="104" x2="200" y2="128" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#a3)"/>
+          <line x1="420" y1="104" x2="520" y2="128" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#a3)"/>
+          <rect x="110" y="130" width="180" height="40" rx="9" fill="#fdf0e4" stroke="#f3cfa8" stroke-width="1.5"/>
+          <text x="200" y="148" text-anchor="middle" class="dg-node-txt" fill="#e9730c">🧪 Mock Server</text>
+          <text x="200" y="162" text-anchor="middle" class="dg-node-sub" fill="#b5652a">local JSON data</text>
+          <rect x="430" y="130" width="180" height="40" rx="9" fill="#e8f5ee" stroke="#b5dcc5" stroke-width="1.5"/>
+          <text x="520" y="148" text-anchor="middle" class="dg-node-txt" fill="#107e3e">🗄️ Real OData Backend</text>
+          <text x="520" y="162" text-anchor="middle" class="dg-node-sub" fill="#0f766e">live SAP service</text>
+          <line x1="200" y1="170" x2="330" y2="192" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#a3)"/>
+          <line x1="520" y1="170" x2="390" y2="192" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#a3)"/>
+          <rect x="280" y="194" width="160" height="30" rx="8" fill="#eef2f8" stroke="#c9d3e0" stroke-width="1.5"/>
+          <text x="360" y="214" text-anchor="middle" class="dg-node-txt" fill="#1d2d44" font-size="11">Browser + DevTools</text>
+        </svg>
+        <div class="dg-cap">One IDE + Fiori tools, two data sources (mock or real), previewed in the browser.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Name two things SAP Fiori tools helps you do beyond writing code.</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> Any two of: <strong>generate</strong> an app, <strong>preview/run</strong> it, <strong>connect</strong> to OData or <strong>run with mock data</strong>, edit <strong>config/annotations</strong>, <strong>build &amp; deploy</strong>, and <strong>run tests</strong>.</div>
+      </div>
+    </div>
+
+    <!-- U4 -->
+    <div class="unit" id="u4">
+      <div class="unit-tag">Unit 04 · Running for Testing</div>
+      <h2 class="unit-title">Mock Data vs Real Backend</h2>
+      <p class="unit-sub">You can run a Fiori app two ways: against the <strong>real OData backend</strong>, or against a <strong>local mock server</strong> that returns fake data. Each answers different questions — and the run command comes straight from <code>package.json</code>.</p>
+
+      <div class="sec">The Run Commands</div>
+      <div class="mono-cap">📦 package.json <span class="fp">scripts</span></div>
+      <div class="mono-block"><span class="key">"scripts"</span>: {
+  <span class="key">"start"</span>:      <span class="val">"fiori run --open index.html"</span>,
+  <span class="key">"start-mock"</span>: <span class="val">"fiori run --config ui5-mock.yaml --open index.html"</span>
+}
+<span class="cmt"># npm start        → real backend</span>
+<span class="cmt"># npm run start-mock → local mock data</span></div>
+
+      <div class="two-col">
+        <div style="background:var(--opa-bg);border:1.5px solid var(--opa-bd);border-radius:10px;padding:15px;">
+          <div style="font-size:13px;font-weight:700;color:var(--opa);margin-bottom:6px;">🗄️ Real Backend</div>
+          <div style="font-size:12px;color:#0b4d47;line-height:1.75;">App → Destination → OData Service → SAP Backend → Business Data. Tests <em>real</em> data, authorization, connectivity, business logic, and real error responses.</div>
+        </div>
+        <div style="background:var(--dbg-bg);border:1.5px solid var(--dbg-bd);border-radius:10px;padding:15px;">
+          <div style="font-size:13px;font-weight:700;color:var(--dbg);margin-bottom:6px;">🧪 Mock Server</div>
+          <div style="font-size:12px;color:#7a3d0e;line-height:1.75;">App → Local Mock Server → metadata.xml + JSON. Test the frontend with predictable data, <em>without</em> depending on an available backend.</div>
+        </div>
+      </div>
+
+      <div class="sec">Where Test Files Live — Project Structure</div>
+      <div class="mono-cap">🗂️ project layout <span class="fp">webapp/</span></div>
+      <div class="mono-block"><span class="key">webapp/</span>
+├── controller/  <span class="cmt"># Main.controller.js</span>
+├── view/        <span class="cmt"># Main.view.xml</span>
+├── model/       <span class="cmt"># formatter.js  ← unit-tested logic</span>
+├── localService/
+│   ├── metadata.xml
+│   └── mockdata/<span class="cmt"># Products.json  ← fake data</span>
+├── test/
+│   ├── unit/        <span class="cmt"># QUnit tests (model/formatter.js)</span>
+│   └── integration/ <span class="cmt"># OPA5 journeys + pages/</span>
+├── Component.js
+└── manifest.json</div>
+
+      <div class="info note">
+        <div class="ii">📄</div>
+        <div class="it"><strong>Example mock data</strong> (<code>Products.json</code>) holds records like <code>{ ProductID:"P1001", ProductName:"Laptop", Price:65000, Stock:12 }</code>. With these you can test table binding, search, filtering, navigation, and formatters — no real SAP system needed.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: You want to test your table binding and search on a plane with no VPN to SAP. Which command?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <code>npm run start-mock</code>. The mock server serves local JSON via <code>ui5-mock.yaml</code>, so the frontend runs on predictable fake data with no backend connection required.</div>
+      </div>
+    </div>
+
+    <!-- U5 -->
+    <div class="unit" id="u5">
+      <div class="unit-tag">Unit 05 · Chrome DevTools — Interactive</div>
+      <h2 class="unit-title">Chrome DevTools Panels</h2>
+      <p class="unit-sub">Open DevTools with <code>F12</code> or <code>Ctrl+Shift+I</code> (<code>Cmd+Option+I</code> on macOS). Each panel answers a different question. Click each tab to explore what it does and when to reach for it.</p>
+
+      <div class="dt-lab">
+        <div class="dt-tabs">
+          <div class="dt-tab on" id="dt-elements" onclick="dtPick('elements',this)">Elements</div>
+          <div class="dt-tab" id="dt-console" onclick="dtPick('console',this)">Console</div>
+          <div class="dt-tab" id="dt-sources" onclick="dtPick('sources',this)">Sources</div>
+          <div class="dt-tab" id="dt-network" onclick="dtPick('network',this)">Network</div>
+          <div class="dt-tab" id="dt-application" onclick="dtPick('application',this)">Application</div>
+          <div class="dt-tab" id="dt-performance" onclick="dtPick('performance',this)">Performance</div>
+        </div>
+        <div class="dt-body" id="dt-body"></div>
+      </div>
+
+      <div class="sec">Example — the "Invisible Button" (Elements panel)</div>
+      <div class="mono-cap">🔎 the culprit CSS <span class="fp">Elements → Styles</span></div>
+      <div class="mono-block"><span class="tag">&lt;Button</span> <span class="attr">text</span>=<span class="val">"Save"</span> <span class="attr">press</span>=<span class="val">".onSave"</span> <span class="attr">class</span>=<span class="val">"saveButton"</span> <span class="tag">/&gt;</span>
+
+<span class="cmt">/* Elements panel reveals why it's gone: */</span>
+<span class="key">.saveButton</span> { <span class="attr">display</span>: <span class="val">none</span>; }   <span class="cmt">← temporarily set to block to confirm</span></div>
+
+      <div class="info green">
+        <div class="ii">🩻</div>
+        <div class="it"><strong>Analogy — an X-ray of the UI.</strong> The <strong>Elements</strong> panel shows the real rendered HTML and the CSS actually applied — so a control that "vanished" (like <code>display:none</code>) becomes visible as a diagnosis, not a mystery.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: A user says "the list is empty" and you suspect the service. Which panel first?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>Network.</strong> Most Fiori bugs are OData bugs — find the request, read its status code and JSON response to decide whether the fault is the backend or the frontend binding.</div>
+      </div>
+    </div>
+
+    <!-- U6 -->
+    <div class="unit" id="u6">
+      <div class="unit-tag">Unit 06 · Breakpoints — Animated</div>
+      <h2 class="unit-title">Breakpoints &amp; Debugging</h2>
+      <p class="unit-sub">The <strong>Sources</strong> panel lets you set a <strong>breakpoint</strong> — a pause button for your code. A user reports the order total isn't calculating. Press play to watch the breakpoint hunt.</p>
+
+      <div class="svg-wrap">
+        <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="anim-btn" id="db-play" onclick="playDebug()">▶ Start debugging</button>
+          <button class="anim-btn" id="db-pause" onclick="pauseDebug()" style="display:none;">⏸ Pause</button>
+        </div>
+        <div class="res-steps" id="db-steps">
+          <div class="res-step" id="dbs0"><div class="rs-icon">📍</div><div class="rs-text">Set a <strong>breakpoint</strong> at <code>const fTotal = iQuantity * fPrice;</code></div><span class="rs-t">Sources</span></div>
+          <div class="res-step" id="dbs1"><div class="rs-icon">⏸️</div><div class="rs-text">Trigger the action — execution <strong>pauses</strong> at that line</div></div>
+          <div class="res-step" id="dbs2"><div class="rs-icon">🔬</div><div class="rs-text">Inspect: <code>iQuantity=5</code>, <code>fPrice=2000</code>, <code>fTotal</code> not yet set</div><span class="rs-t">watch</span></div>
+          <div class="res-step" id="dbs3"><div class="rs-icon">👣</div><div class="rs-text"><strong>Step over</strong> — the line runs, <code>fTotal</code> becomes <code>10000</code></div></div>
+          <div class="res-step" id="dbs4"><div class="rs-icon">🧾</div><div class="rs-text">Check the <strong>call stack</strong> — confirm who called this handler</div></div>
+          <div class="res-step" id="dbs5"><div class="rs-icon">▶️</div><div class="rs-text"><strong>Resume</strong> — let the app continue and verify the UI updates</div></div>
+          <div class="res-step" id="dbs6"><div class="rs-icon">✅</div><div class="rs-text">Root cause found &amp; fixed — add a QUnit test so it never returns</div><span class="rs-t">done</span></div>
+        </div>
+      </div>
+
+      <div class="sec">The Code Under the Breakpoint</div>
+      <div class="mono-cap">📁 Main.controller.js <span class="fp">webapp/controller/Main.controller.js</span></div>
+      <div class="mono-block"><span class="fn">onCalculateTotal</span>: <span class="kw">function</span> () {
+  <span class="kw">const</span> oModel = <span class="kw">this</span>.getView().getModel(<span class="val">"order"</span>);
+  <span class="kw">const</span> iQuantity = oModel.getProperty(<span class="val">"/Quantity"</span>);
+  <span class="kw">const</span> fPrice    = oModel.getProperty(<span class="val">"/Price"</span>);
+  <span class="kw">const</span> fTotal = iQuantity * fPrice;   <span class="cmt">// ⛔ breakpoint here</span>
+  oModel.setProperty(<span class="val">"/Total"</span>, fTotal);
+}</div>
+
+      <div class="sec">Debugger Controls</div>
+      <table class="tbl">
+        <thead><tr><th>Control</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Resume</strong></td><td>Continue execution until the next breakpoint</td></tr>
+          <tr><td><strong>Step over</strong></td><td>Run the current line without entering a called function</td></tr>
+          <tr><td><strong>Step into</strong></td><td>Enter the called function to debug inside it</td></tr>
+          <tr><td><strong>Step out</strong></td><td>Finish the current function, return to its caller</td></tr>
+          <tr><td><strong>Watch</strong></td><td>Continuously show selected expressions' values</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info note">
+        <div class="ii">📹</div>
+        <div class="it"><strong>Analogy — pausing security footage.</strong> Normally the video runs non-stop; a breakpoint is the Pause button. Frozen, you inspect who entered, what they carried, which door they used — just as a breakpoint lets you inspect variables, parameters, model data, and the call sequence at the exact failing line.</div>
+      </div>
+
+      <div class="info tip">
+        <div class="ii">⌨️</div>
+        <div class="it">You can also drop <code>debugger;</code> right in your code — when DevTools is open, execution pauses there. Handy inside <code>onSave</code> to inspect data before a save. Remove it before deployment.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: You're paused in <code>onSave</code> and want to debug <em>inside</em> a helper it calls. Which control?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>Step into</strong> — it enters the called function so you can walk its lines. <em>Step over</em> would run the helper in one go without going inside it.</div>
+      </div>
+    </div>
+
+    <!-- U7 -->
+    <div class="unit" id="u7">
+      <div class="unit-tag">Unit 07 · Network — Interactive</div>
+      <h2 class="unit-title">Network &amp; OData Status Codes</h2>
+      <p class="unit-sub">The <strong>Network</strong> panel shows every request the app makes — OData calls, metadata, JS, XML, CSS, images — with method, payload, response, duration and <strong>status code</strong>. The status code is your first clue. Click one to decode it.</p>
+
+      <div class="mono-cap">🌐 an OData request <span class="fp">Network → Fetch/XHR</span></div>
+      <div class="mono-block"><span class="kw">GET</span> /sap/opu/odata/sap/ZSALES_ORDER_SRV/SalesOrderSet
+<span class="val">200 OK</span>   <span class="cmt"># request completed successfully</span></div>
+
+      <div class="sec">Status Codes (click to decode)</div>
+      <div class="status-grid">
+        <div class="status-chip s2" onclick="stPick('200',this)"><div class="sc-code">200</div><div class="sc-lbl" style="color:#0a3018;">Success</div></div>
+        <div class="status-chip s2" onclick="stPick('201',this)"><div class="sc-code">201</div><div class="sc-lbl" style="color:#0a3018;">Created</div></div>
+        <div class="status-chip s2" onclick="stPick('204',this)"><div class="sc-code">204</div><div class="sc-lbl" style="color:#0a3018;">No Content</div></div>
+        <div class="status-chip s4" onclick="stPick('400',this)"><div class="sc-code">400</div><div class="sc-lbl" style="color:#7a3d0e;">Bad Request</div></div>
+        <div class="status-chip s4" onclick="stPick('401',this)"><div class="sc-code">401</div><div class="sc-lbl" style="color:#7a3d0e;">Unauthorized</div></div>
+        <div class="status-chip s4" onclick="stPick('403',this)"><div class="sc-code">403</div><div class="sc-lbl" style="color:#7a3d0e;">Forbidden</div></div>
+        <div class="status-chip s4" onclick="stPick('404',this)"><div class="sc-code">404</div><div class="sc-lbl" style="color:#7a3d0e;">Not Found</div></div>
+        <div class="status-chip s5" onclick="stPick('500',this)"><div class="sc-code">500</div><div class="sc-lbl" style="color:#6b0f07;">Server Error</div></div>
+      </div>
+      <div class="status-detail" id="st-detail"></div>
+
+      <div class="sec">Diagnosing an Empty Table with Network</div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 170" role="img" aria-label="Empty table diagnosis by status code">
+          <defs><marker id="a7" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#9aa7b8"/></marker></defs>
+          <rect x="255" y="8" width="210" height="34" rx="8" fill="#eef2f8" stroke="#c9d3e0" stroke-width="1.5"/>
+          <text x="360" y="29" text-anchor="middle" class="dg-node-txt" fill="#1d2d44">Table is empty → open Network</text>
+          <line x1="360" y1="42" x2="360" y2="58" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#a7)"/>
+          <rect x="285" y="60" width="150" height="30" rx="8" fill="#e6f0fd" stroke="#b8d7f7" stroke-width="1.5"/>
+          <text x="360" y="80" text-anchor="middle" class="dg-node-txt" fill="#0070f2" font-size="11">Check status code</text>
+          <line x1="300" y1="90" x2="140" y2="120" stroke="#9aa7b8" stroke-width="1.5" marker-end="url(#a7)"/>
+          <line x1="360" y1="90" x2="360" y2="120" stroke="#9aa7b8" stroke-width="1.5" marker-end="url(#a7)"/>
+          <line x1="420" y1="90" x2="580" y2="120" stroke="#9aa7b8" stroke-width="1.5" marker-end="url(#a7)"/>
+          <rect x="55" y="122" width="170" height="42" rx="8" fill="#fdf0e4" stroke="#f3cfa8" stroke-width="1.4"/>
+          <text x="140" y="139" text-anchor="middle" class="dg-node-txt" fill="#e9730c" font-size="11">404 Not Found</text>
+          <text x="140" y="155" text-anchor="middle" class="dg-node-sub" fill="#b5652a">wrong service URL</text>
+          <rect x="275" y="122" width="170" height="42" rx="8" fill="#fdecea" stroke="#f3b0a8" stroke-width="1.4"/>
+          <text x="360" y="139" text-anchor="middle" class="dg-node-txt" fill="#bb0000" font-size="11">403 Forbidden</text>
+          <text x="360" y="155" text-anchor="middle" class="dg-node-sub" fill="#6b0f07">missing authorization</text>
+          <rect x="495" y="122" width="170" height="42" rx="8" fill="#e8f5ee" stroke="#b5dcc5" stroke-width="1.4"/>
+          <text x="580" y="139" text-anchor="middle" class="dg-node-txt" fill="#107e3e" font-size="11">200 + data</text>
+          <text x="580" y="155" text-anchor="middle" class="dg-node-sub" fill="#0f766e">frontend binding path wrong</text>
+        </svg>
+        <div class="dg-cap">The status code splits the problem: URL, authorization, or frontend binding.</div>
+      </div>
+
+      <div class="info green">
+        <div class="ii">📦</div>
+        <div class="it"><strong>Analogy — parcel tracking.</strong> Network shows the journey: request sent → reaches server → server processes → response returned. Just like tracking a parcel, you see exactly where it succeeded or got stuck.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: The OData call returns <code>200 OK</code> with records, but the table is still empty. Where's the bug?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> The <strong>frontend binding path</strong>. The service delivered data (200 + records), so the backend is fine — the view's binding path or model assignment is wrong (e.g. <code>/Product</code> instead of <code>/Products</code>).</div>
+      </div>
+    </div>
+
+    <!-- U8 -->
+    <div class="unit" id="u8">
+      <div class="unit-tag">Unit 08 · Debugging Data &amp; Events</div>
+      <h2 class="unit-title">Binding &amp; Event Debugging</h2>
+      <p class="unit-sub">Two of the most common Fiori bugs: data won't display (a <strong>binding</strong> problem) and a button does nothing (an <strong>event handler</strong> problem). Both follow a clear checklist.</p>
+
+      <div class="sec">Binding Bug — a One-Letter Difference</div>
+      <div class="mono-cap">📁 Main.view.xml <span class="fp">the model has /Products</span></div>
+      <div class="mono-block"><span class="cmt">&lt;!-- Model data: { "Products": [ { "ProductID": "P101" } ] } --&gt;</span>
+
+<span class="tag">&lt;Table</span> <span class="attr">items</span>=<span class="val">"{product&gt;/Products}"</span><span class="tag">&gt;</span>   <span class="cmt">✅ correct</span>
+<span class="tag">&lt;Table</span> <span class="attr">items</span>=<span class="val">"{product&gt;/Product}"</span><span class="tag">&gt;</span>    <span class="cmt">❌ no records appear</span></div>
+
+      <div class="sec">Binding Debugging Flow</div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 150" role="img" aria-label="Binding debugging checklist">
+          <defs><marker id="a8" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9aa7b8"/></marker></defs>
+          <g font-size="10">
+            <rect x="8" y="55" width="96" height="40" rx="8" fill="#e6f0fd" stroke="#b8d7f7" stroke-width="1.4"/>
+            <text x="56" y="72" text-anchor="middle" fill="#0070f2" font-weight="700">Model</text>
+            <text x="56" y="86" text-anchor="middle" fill="#0050b3">assigned?</text>
+            <line x1="104" y1="75" x2="122" y2="75" stroke="#9aa7b8" stroke-width="1.4" marker-end="url(#a8)"/>
+            <rect x="124" y="55" width="96" height="40" rx="8" fill="#e6f0fd" stroke="#b8d7f7" stroke-width="1.4"/>
+            <text x="172" y="72" text-anchor="middle" fill="#0070f2" font-weight="700">Model name</text>
+            <text x="172" y="86" text-anchor="middle" fill="#0050b3">correct?</text>
+            <line x1="220" y1="75" x2="238" y2="75" stroke="#9aa7b8" stroke-width="1.4" marker-end="url(#a8)"/>
+            <rect x="240" y="55" width="96" height="40" rx="8" fill="#fff8e6" stroke="#f5c842" stroke-width="1.4"/>
+            <text x="288" y="72" text-anchor="middle" fill="#8a6d00" font-weight="700">Binding path</text>
+            <text x="288" y="86" text-anchor="middle" fill="#8a6d00">correct?</text>
+            <line x1="336" y1="75" x2="354" y2="75" stroke="#9aa7b8" stroke-width="1.4" marker-end="url(#a8)"/>
+            <rect x="356" y="55" width="96" height="40" rx="8" fill="#e8f5ee" stroke="#b5dcc5" stroke-width="1.4"/>
+            <text x="404" y="72" text-anchor="middle" fill="#107e3e" font-weight="700">Service</text>
+            <text x="404" y="86" text-anchor="middle" fill="#0f766e">returns data?</text>
+            <line x1="452" y1="75" x2="470" y2="75" stroke="#9aa7b8" stroke-width="1.4" marker-end="url(#a8)"/>
+            <rect x="472" y="55" width="100" height="40" rx="8" fill="#e8f5ee" stroke="#b5dcc5" stroke-width="1.4"/>
+            <text x="522" y="72" text-anchor="middle" fill="#107e3e" font-weight="700">Structure</text>
+            <text x="522" y="86" text-anchor="middle" fill="#0f766e">matches?</text>
+            <line x1="572" y1="75" x2="590" y2="75" stroke="#9aa7b8" stroke-width="1.4" marker-end="url(#a8)"/>
+            <rect x="592" y="55" width="118" height="40" rx="8" fill="#f2e9f7" stroke="#d8bfe6" stroke-width="1.4"/>
+            <text x="651" y="72" text-anchor="middle" fill="#6a2c8c" font-weight="700">Formatter</text>
+            <text x="651" y="86" text-anchor="middle" fill="#6a2c8c">&amp; filters?</text>
+          </g>
+          <text x="360" y="28" text-anchor="middle" font-size="11.5" font-weight="700" fill="#003169">Data not displayed? Walk this left to right</text>
+        </svg>
+        <div class="dg-cap">Six checks, in order — the first "no" is your bug.</div>
+      </div>
+
+      <div class="sec">Event Bug — Name Mismatch</div>
+      <div class="mono-cap">📁 view + controller <span class="fp">the names must match exactly</span></div>
+      <div class="mono-block"><span class="tag">&lt;Button</span> <span class="attr">press</span>=<span class="val">".onSave"</span> <span class="tag">/&gt;</span>          <span class="cmt"># view expects onSave</span>
+
+<span class="fn">onSaveOrder</span>: <span class="kw">function</span>(){ ... }    <span class="cmt">❌ controller has a different name</span>
+<span class="fn">onSave</span>: <span class="kw">function</span>(){ ... }         <span class="cmt">✅ fix: match the handler name</span></div>
+
+      <div class="info red">
+        <div class="ii">🖱️</div>
+        <div class="it"><strong>"Button does nothing" checklist:</strong> is the handler name an exact match? does the controller method exist? is the button disabled? is a transparent overlay blocking clicks? does an exception throw before the action completes? Check <em>Elements</em> (enabled/visible), <em>Sources</em> (breakpoint in handler), <em>Console</em> (exceptions).</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: A table stays empty; Network shows <code>200 OK</code> with data and the model is assigned. Next check?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> The <strong>binding path</strong> (and that the response structure matches it). Data arrived and the model exists, so the likely culprit is a wrong path like <code>/Product</code> vs <code>/Products</code>, or a model-name mismatch.</div>
+      </div>
+    </div>
+
+    <!-- U9 -->
+    <div class="unit" id="u9">
+      <div class="unit-tag">Unit 09 · QUnit — Unit Testing</div>
+      <h2 class="unit-title">QUnit Unit Testing</h2>
+      <p class="unit-sub"><strong>QUnit</strong> tests one small piece of logic in isolation — formatters, validators, calculations, helpers. Give an input, assert the output. Structure: <strong>Arrange → Act → Assert</strong> (AAA).</p>
+
+      <div class="info green">
+        <div class="ii">🏭</div>
+        <div class="it"><strong>Analogy — a phone factory.</strong> Before assembling the whole phone, each part is tested alone: battery, camera, speaker, display. QUnit tests each function of your app the same way — small pieces first, so a failure points to exactly one broken part.</div>
+      </div>
+
+      <div class="sec">The Function Under Test</div>
+      <div class="mono-cap">📁 formatter.js <span class="fp">webapp/model/formatter.js</span></div>
+      <div class="mono-block"><span class="fn">formatStockStatus</span>: <span class="kw">function</span> (iStock) {
+  <span class="kw">if</span> (iStock &lt;= <span class="num">0</span>)  <span class="kw">return</span> <span class="val">"Out of Stock"</span>;
+  <span class="kw">if</span> (iStock &lt; <span class="num">10</span>)  <span class="kw">return</span> <span class="val">"Low Stock"</span>;
+  <span class="kw">return</span> <span class="val">"Available"</span>;
+}</div>
+
+      <div class="sec">The QUnit Test (Arrange–Act–Assert)</div>
+      <div class="mono-cap">🧪 formatter test <span class="fp">webapp/test/unit/model/formatter.js</span></div>
+      <div class="mono-block"><span class="fn">QUnit</span>.<span class="fn">module</span>(<span class="val">"Stock Status Formatter"</span>);
+
+<span class="fn">QUnit</span>.<span class="fn">test</span>(<span class="val">"Returns Out of Stock when stock is zero"</span>, <span class="kw">function</span> (assert) {
+  <span class="kw">const</span> sResult = formatter.formatStockStatus(<span class="num">0</span>);          <span class="cmt">// Act</span>
+  assert.<span class="fn">strictEqual</span>(sResult, <span class="val">"Out of Stock"</span>, <span class="val">"zero → Out of Stock"</span>); <span class="cmt">// Assert</span>
+});
+
+<span class="fn">QUnit</span>.<span class="fn">test</span>(<span class="val">"Returns Low Stock below ten"</span>, <span class="kw">function</span> (assert) {
+  assert.<span class="fn">strictEqual</span>(formatter.formatStockStatus(<span class="num">5</span>), <span class="val">"Low Stock"</span>);
+});</div>
+
+      <div class="testbar pass"><span class="tb-i">✅</span> Stock Status Formatter · 3 tests completed · 3 passed · 0 failed</div>
+
+      <div class="sec">The Four Assertions You'll Use</div>
+      <table class="tbl">
+        <thead><tr><th>Assertion</th><th>Checks</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td><code>strictEqual</code></td><td>Value <em>and</em> type match</td><td><code>strictEqual(x, "Available")</code></td></tr>
+          <tr><td><code>ok</code></td><td>Condition is truthy</td><td><code>ok(iTotal &gt; 0)</code></td></tr>
+          <tr><td><code>deepEqual</code></td><td>Arrays/objects equal by value</td><td><code>deepEqual(oA, oB)</code></td></tr>
+          <tr><td><code>notStrictEqual</code></td><td>Values differ</td><td><code>notStrictEqual(s, "")</code></td></tr>
+        </tbody>
+      </table>
+
+      <div class="sec">Boundary Testing — Where Bugs Hide</div>
+      <div class="info tip">
+        <div class="ii">🎯</div>
+        <div class="it"><strong>Boundary values</strong> sit right where a rule changes. For a discount rule (0% below ₹10,000; 5% to ₹49,999; 10% from ₹50,000), test <code>9999→0</code>, <code>10000→500</code>, <code>49999→2499.95</code>, <code>50000→5000</code>. Most defects happen at these condition limits, not in the middle.</div>
+      </div>
+      <div class="mono-cap">🧪 boundary test <span class="fp">discount at the edges</span></div>
+      <div class="mono-block"><span class="fn">QUnit</span>.<span class="fn">test</span>(<span class="val">"Discount boundary values"</span>, <span class="kw">function</span> (assert) {
+  assert.<span class="fn">strictEqual</span>(formatter.calculateDiscount(<span class="num">9999</span>),  <span class="num">0</span>);
+  assert.<span class="fn">strictEqual</span>(formatter.calculateDiscount(<span class="num">10000</span>), <span class="num">500</span>);
+  assert.<span class="fn">strictEqual</span>(formatter.calculateDiscount(<span class="num">50000</span>), <span class="num">5000</span>);
+});</div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: Why test <code>10000</code> specifically and not just <code>25000</code>?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <code>10000</code> is a <strong>boundary</strong> — the exact point the discount rule changes from 0% to 5%. Off-by-one errors (<code>&gt;</code> vs <code>&gt;=</code>) show up right there, while a mid-range value like 25000 would pass even with the bug.</div>
+      </div>
+    </div>
+
+    <!-- U10 -->
+    <div class="unit" id="u10">
+      <div class="unit-tag">Unit 10 · OPA5 — Integration Testing</div>
+      <h2 class="unit-title">OPA5 Integration Testing</h2>
+      <p class="unit-sub"><strong>OPA5</strong> (One Page Acceptance) drives the <em>real running app</em> like a user — finding controls, pressing, typing, navigating, then asserting what appears. It tests parts working <em>together</em>, structured as <strong>Given → When → Then</strong>.</p>
+
+      <div class="info green">
+        <div class="ii">🍽️</div>
+        <div class="it"><strong>Analogy — a manager testing the customer experience.</strong> The manager acts like a customer: opens the menu, selects food, adds it, confirms, checks the confirmation appears. OPA5 behaves like a real user: open app → find control → perform action → verify result.</div>
+      </div>
+
+      <div class="sec">Given–When–Then</div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 96" role="img" aria-label="Given When Then structure">
+          <defs><marker id="a10" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#9aa7b8"/></marker></defs>
+          <rect x="30" y="30" width="190" height="44" rx="10" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1.5"/>
+          <text x="125" y="50" text-anchor="middle" class="dg-node-txt" fill="#5b21b6">GIVEN</text>
+          <text x="125" y="66" text-anchor="middle" class="dg-node-sub" fill="#6d28d9">app is started (setup)</text>
+          <line x1="220" y1="52" x2="258" y2="52" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#a10)"/>
+          <rect x="260" y="30" width="190" height="44" rx="10" fill="#e6f0fd" stroke="#b8d7f7" stroke-width="1.5"/>
+          <text x="355" y="50" text-anchor="middle" class="dg-node-txt" fill="#0070f2">WHEN</text>
+          <text x="355" y="66" text-anchor="middle" class="dg-node-sub" fill="#0050b3">user performs an action</text>
+          <line x1="450" y1="52" x2="488" y2="52" stroke="#9aa7b8" stroke-width="1.6" marker-end="url(#a10)"/>
+          <rect x="490" y="30" width="200" height="44" rx="10" fill="#e8f5ee" stroke="#b5dcc5" stroke-width="1.5"/>
+          <text x="590" y="50" text-anchor="middle" class="dg-node-txt" fill="#107e3e">THEN</text>
+          <text x="590" y="66" text-anchor="middle" class="dg-node-sub" fill="#0f766e">expected result is checked</text>
+          <text x="360" y="18" text-anchor="middle" font-size="11" font-weight="700" fill="#003169">Set up state → act → assert the outcome</text>
+        </svg>
+        <div class="dg-cap">Given sets the scene, When does the action, Then verifies what the user sees.</div>
+      </div>
+
+      <div class="sec">A Real Journey</div>
+      <div class="mono-cap">🎭 journey <span class="fp">webapp/test/integration/SalesOrderJourney.js</span></div>
+      <div class="mono-block"><span class="fn">opaTest</span>(<span class="val">"Should open the sales-order details page"</span>, <span class="kw">function</span> (Given, When, Then) {
+  Given.<span class="fn">iStartMyApp</span>();
+  When.onTheSalesOrderList.<span class="fn">iPressOnTheFirstOrder</span>();
+  Then.onTheSalesOrderDetails.<span class="fn">theDetailsPageShouldBeVisible</span>();
+  Then.<span class="fn">iTeardownMyApp</span>();
+});</div>
+
+      <div class="sec">Page Objects — Reusable, Readable</div>
+      <div class="mono-cap">🎭 page object <span class="fp">test/integration/pages/SalesOrderList.js</span></div>
+      <div class="mono-block"><span class="fn">Opa5</span>.<span class="fn">createPageObjects</span>({
+  <span class="key">onTheSalesOrderList</span>: {
+    <span class="key">actions</span>: {
+      <span class="fn">iPressOnTheFirstOrder</span>: <span class="kw">function</span> () {
+        <span class="kw">return this</span>.<span class="fn">waitFor</span>({           <span class="cmt">// waits until control is ready</span>
+          <span class="key">id</span>: <span class="val">"salesOrderTable"</span>,
+          <span class="key">success</span>: <span class="kw">function</span> (oTable) {
+            <span class="kw">new</span> Press().executeOn(oTable.getItems()[<span class="num">0</span>]);
+          },
+          <span class="key">errorMessage</span>: <span class="val">"Sales-order table was not found"</span>
+        });
+      }
+    }
+  }
+});</div>
+
+      <div class="info tip">
+        <div class="ii">⏳</div>
+        <div class="it"><strong>OPA5 waits for you.</strong> UI5 renders asynchronously, so <code>waitFor</code> <em>polls</em> until the control and data are ready before acting — no fragile fixed <code>setTimeout</code> delays. A <strong>page object</strong> groups a screen's actions and assertions, so if a control ID changes you fix it in one place.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: A QUnit test checks the filter-building function. What does the matching OPA5 test add?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> It verifies the <strong>whole interaction on screen</strong>: user types in the search field → search event → filter created → model binding → the table actually shows only matching rows. QUnit checks the piece; OPA5 checks the pieces working together.</div>
+      </div>
+    </div>
+
+    <!-- U11 -->
+    <div class="unit" id="u11">
+      <div class="unit-tag">Unit 11 · Troubleshooting — Interactive</div>
+      <h2 class="unit-title">Errors &amp; Systematic Debugging</h2>
+      <p class="unit-sub">Most Fiori problems fall into a handful of patterns. Tap each error to reveal its likely causes and where to look. Then follow the systematic procedure — never change code randomly.</p>
+
+      <div class="err-lab">
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg">Uncaught ReferenceError: calculateTotal is not defined</div>
+          <div class="err-hint">▸ tap for cause &amp; fix</div>
+          <div class="err-fix"><strong>Cause:</strong> calling a function that doesn't exist or is out of scope. <strong>Fix:</strong> check the spelling, that it's defined, and that it's reachable from where it's called. Look in the <b>Console</b>.</div>
+        </div>
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg">Cannot read properties of undefined</div>
+          <div class="err-hint">▸ tap for cause &amp; fix</div>
+          <div class="err-fix"><strong>Cause:</strong> reading <code>oCustomer.Name</code> when <code>oCustomer</code> is undefined. <strong>Fix:</strong> guard it — <code>if (oCustomer) { ... }</code> — and use a breakpoint to see why the object is missing.</div>
+        </div>
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg">Failed to load '.../Main.controller.js'</div>
+          <div class="err-hint">▸ tap for cause &amp; fix</div>
+          <div class="err-fix"><strong>Cause:</strong> wrong namespace, file location, resource-root, dependency path, or a <b>case mismatch</b> in the filename. <strong>Fix:</strong> verify the path and exact casing; check <b>Network</b> for the failed file.</div>
+        </div>
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg">Blank screen — nothing renders</div>
+          <div class="err-hint">▸ tap for cause &amp; fix</div>
+          <div class="err-fix"><strong>Cause:</strong> JS syntax error, wrong component namespace, missing dependency, invalid <code>manifest.json</code>, or an XML parse error. <strong>Fix:</strong> Console (JS/XML error) → Network (failed file) → Sources (module path).</div>
+        </div>
+        <div class="err-card" onclick="errToggle(this)">
+          <div class="err-msg">Data saves but the UI doesn't update</div>
+          <div class="err-hint">▸ tap for cause &amp; fix</div>
+          <div class="err-fix"><strong>Cause:</strong> model not refreshed, wrong binding mode, response not applied, or UI bound to a different model instance. <strong>Fix:</strong> ensure the right model updates; <code>getModel().refresh()</code> if appropriate (avoid needless refreshes — the right fix depends on the OData model version).</div>
+        </div>
+      </div>
+
+      <div class="sec">Frontend or Backend? The Decision Flow</div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 200" role="img" aria-label="Frontend vs backend decision flow">
+          <defs><marker id="a11" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9aa7b8"/></marker></defs>
+          <rect x="280" y="6" width="160" height="30" rx="8" fill="#eef2f8" stroke="#c9d3e0" stroke-width="1.5"/>
+          <text x="360" y="25" text-anchor="middle" class="dg-node-txt" fill="#1d2d44" font-size="11">User reports an error</text>
+          <line x1="360" y1="36" x2="360" y2="50" stroke="#9aa7b8" stroke-width="1.5" marker-end="url(#a11)"/>
+          <path d="M360,52 L410,74 L360,96 L310,74 Z" fill="#fff8e6" stroke="#f5c842" stroke-width="1.4"/>
+          <text x="360" y="72" text-anchor="middle" fill="#8a6d00" font-size="9.5" font-weight="700">Handler</text>
+          <text x="360" y="84" text-anchor="middle" fill="#8a6d00" font-size="9.5">runs?</text>
+          <line x1="310" y1="74" x2="180" y2="74" stroke="#9aa7b8" stroke-width="1.4" marker-end="url(#a11)"/>
+          <text x="245" y="67" text-anchor="middle" class="dg-edge-lbl" fill="#bb0000">No</text>
+          <rect x="40" y="58" width="140" height="34" rx="8" fill="#fdf0e4" stroke="#f3cfa8" stroke-width="1.4"/>
+          <text x="110" y="74" text-anchor="middle" fill="#e9730c" font-size="10" font-weight="700">Frontend event</text>
+          <text x="110" y="86" text-anchor="middle" fill="#b5652a" font-size="9">problem (name/scope)</text>
+          <line x1="360" y1="96" x2="360" y2="112" stroke="#9aa7b8" stroke-width="1.4" marker-end="url(#a11)"/>
+          <text x="378" y="106" class="dg-edge-lbl" fill="#107e3e">Yes</text>
+          <path d="M360,114 L412,136 L360,158 L308,136 Z" fill="#fff8e6" stroke="#f5c842" stroke-width="1.4"/>
+          <text x="360" y="134" text-anchor="middle" fill="#8a6d00" font-size="9.5" font-weight="700">Request</text>
+          <text x="360" y="146" text-anchor="middle" fill="#8a6d00" font-size="9.5">sent?</text>
+          <line x1="308" y1="136" x2="180" y2="136" stroke="#9aa7b8" stroke-width="1.4" marker-end="url(#a11)"/>
+          <text x="245" y="129" class="dg-edge-lbl" fill="#bb0000">No</text>
+          <rect x="40" y="120" width="140" height="34" rx="8" fill="#fdf0e4" stroke="#f3cfa8" stroke-width="1.4"/>
+          <text x="110" y="136" text-anchor="middle" fill="#e9730c" font-size="10" font-weight="700">Frontend logic</text>
+          <text x="110" y="148" text-anchor="middle" fill="#b5652a" font-size="9">problem</text>
+          <line x1="412" y1="136" x2="470" y2="136" stroke="#9aa7b8" stroke-width="1.4" marker-end="url(#a11)"/>
+          <text x="440" y="129" class="dg-edge-lbl" fill="#107e3e">Yes</text>
+          <path d="M520,114 L572,136 L520,158 L468,136 Z" fill="#fff8e6" stroke="#f5c842" stroke-width="1.4"/>
+          <text x="520" y="134" text-anchor="middle" fill="#8a6d00" font-size="9.5" font-weight="700">Response</text>
+          <text x="520" y="146" text-anchor="middle" fill="#8a6d00" font-size="9.5">code?</text>
+          <line x1="520" y1="158" x2="520" y2="172" stroke="#9aa7b8" stroke-width="1.4"/>
+          <line x1="430" y1="172" x2="610" y2="172" stroke="#9aa7b8" stroke-width="1.4"/>
+          <rect x="360" y="174" width="140" height="24" rx="7" fill="#e8f5ee" stroke="#b5dcc5" stroke-width="1.4"/>
+          <text x="430" y="190" text-anchor="middle" fill="#107e3e" font-size="9" font-weight="700">2xx → binding/UI issue</text>
+          <rect x="512" y="174" width="150" height="24" rx="7" fill="#fdecea" stroke="#f3b0a8" stroke-width="1.4"/>
+          <text x="587" y="190" text-anchor="middle" fill="#bb0000" font-size="9" font-weight="700">4xx/5xx → backend/auth</text>
+        </svg>
+        <div class="dg-cap">Handler runs? → Request sent? → Response code? Each branch narrows frontend vs backend.</div>
+      </div>
+
+      <div class="sec">The Systematic Debugging Procedure</div>
+      <div class="res-steps" style="margin-top:6px;">
+        <div class="res-step done"><div class="rs-icon">1️⃣</div><div class="rs-text">Reproduce the issue reliably</div></div>
+        <div class="res-step done"><div class="rs-icon">2️⃣</div><div class="rs-text">Read <strong>Console</strong> errors</div></div>
+        <div class="res-step done"><div class="rs-icon">3️⃣</div><div class="rs-text">Inspect <strong>Network</strong> requests</div></div>
+        <div class="res-step done"><div class="rs-icon">4️⃣</div><div class="rs-text">Add a <strong>breakpoint</strong></div></div>
+        <div class="res-step done"><div class="rs-icon">5️⃣</div><div class="rs-text">Inspect models &amp; variables</div></div>
+        <div class="res-step done"><div class="rs-icon">6️⃣</div><div class="rs-text">Identify the root cause</div></div>
+        <div class="res-step done"><div class="rs-icon">7️⃣</div><div class="rs-text">Make the <strong>smallest</strong> correction</div></div>
+        <div class="res-step done"><div class="rs-icon">8️⃣</div><div class="rs-text">Retest the failed scenario</div></div>
+        <div class="res-step done"><div class="rs-icon">9️⃣</div><div class="rs-text">Run <strong>regression</strong> tests</div></div>
+      </div>
+
+      <div class="info green">
+        <div class="ii">🧭</div>
+        <div class="it"><strong>Worked example:</strong> "Cannot read properties of undefined" on customer select. Breakpoint on the handler shows <code>oEvent</code> exists but <code>selectedItem</code> is undefined — the control actually sends <code>listItem</code>. Fix: read <code>getParameter("listItem")</code>, guard for null, then retest.</div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz-q">Q: The event handler runs and a request is sent, but the response is <code>500</code>. Frontend or backend?</div>
+        <button class="rev-btn" onclick="rev(this)">Reveal Answer</button>
+        <div class="quiz-a"><span class="chk">✓</span> <strong>Backend.</strong> A <code>500</code> is a server-side exception — the frontend did its job (handler ran, request sent). Investigate the backend service, data, or authorization, not the UI code.</div>
+      </div>
+    </div>
+
+    <!-- U12 -->
+    <div class="unit" id="u12">
+      <div class="unit-tag">Unit 12 · Workflow &amp; Knowledge Check</div>
+      <h2 class="unit-title">Real-World Workflow &amp; Check</h2>
+      <p class="unit-sub">Putting it together: how QUnit, OPA5, OData tests, Chrome debugging and manual testing stack into one reliable delivery — plus a QUnit-vs-OPA5 recap and a knowledge check.</p>
+
+      <div class="sec">The Complete Testing Architecture</div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 250" role="img" aria-label="Complete testing architecture stack">
+          <defs><marker id="a12" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#9aa7b8"/></marker></defs>
+          <rect x="230" y="6" width="260" height="30" rx="8" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1.5"/>
+          <text x="360" y="25" text-anchor="middle" class="dg-node-txt" fill="#5b21b6" font-size="11">Business Requirement</text>
+          <line x1="360" y1="36" x2="360" y2="48" stroke="#9aa7b8" stroke-width="1.5" marker-end="url(#a12)"/>
+          <rect x="200" y="50" width="320" height="30" rx="8" fill="#e6f0fd" stroke="#b8d7f7" stroke-width="1.5"/>
+          <text x="360" y="69" text-anchor="middle" class="dg-node-txt" fill="#0070f2" font-size="11">🧩 QUnit — calculations, formatters, validators</text>
+          <line x1="360" y1="80" x2="360" y2="92" stroke="#9aa7b8" stroke-width="1.5" marker-end="url(#a12)"/>
+          <rect x="200" y="94" width="320" height="30" rx="8" fill="#e8f5ee" stroke="#b5dcc5" stroke-width="1.5"/>
+          <text x="360" y="113" text-anchor="middle" class="dg-node-txt" fill="#107e3e" font-size="11">🎭 OPA5 — actions, search, navigation, dialogs</text>
+          <line x1="360" y1="124" x2="360" y2="136" stroke="#9aa7b8" stroke-width="1.5" marker-end="url(#a12)"/>
+          <rect x="200" y="138" width="320" height="30" rx="8" fill="#fdf0e4" stroke="#f3cfa8" stroke-width="1.5"/>
+          <text x="360" y="157" text-anchor="middle" class="dg-node-txt" fill="#e9730c" font-size="11">🗄️ Backend / OData — request, response, auth</text>
+          <line x1="360" y1="168" x2="360" y2="180" stroke="#9aa7b8" stroke-width="1.5" marker-end="url(#a12)"/>
+          <rect x="200" y="182" width="320" height="30" rx="8" fill="#f2e9f7" stroke="#d8bfe6" stroke-width="1.5"/>
+          <text x="360" y="201" text-anchor="middle" class="dg-node-txt" fill="#6a2c8c" font-size="11">👤 Manual — full workflow, usability, responsive</text>
+          <line x1="360" y1="212" x2="360" y2="224" stroke="#9aa7b8" stroke-width="1.5" marker-end="url(#a12)"/>
+          <rect x="230" y="222" width="260" height="26" rx="8" fill="#003169"/>
+          <text x="360" y="239" text-anchor="middle" class="dg-node-txt" fill="#ffde6a" font-size="11">✅ Production-Ready Fiori App</text>
+        </svg>
+        <div class="dg-cap">Each layer builds confidence; together they make delivery reliable.</div>
+      </div>
+
+      <div class="sec">QUnit vs OPA5 — Interactive Recap</div>
+      <div class="cc-lab">
+        <div class="cc-tabs">
+          <div class="cc-tab qunit on" id="cc-qunit" onclick="ccPick('qunit',this)"><div class="cev">🧩</div><div class="ctl">QUnit</div></div>
+          <div class="cc-tab opa" id="cc-opa" onclick="ccPick('opa',this)"><div class="cev">🎭</div><div class="ctl">OPA5</div></div>
+          <div class="cc-tab dbg" id="cc-both" onclick="ccPick('both',this)"><div class="cev">🤝</div><div class="ctl">Together</div></div>
+        </div>
+        <div class="cc-body">
+          <div class="cc-title" id="cc-title"></div>
+          <div class="cc-def" id="cc-def"></div>
+          <div class="cc-analogy" id="cc-analogy"></div>
+        </div>
+      </div>
+      <table class="tbl">
+        <thead><tr><th>&nbsp;</th><th style="color:#8fd0ff;">🧩 QUnit</th><th style="color:#9fe6b4;">🎭 OPA5</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Tests</strong></td><td>Individual JS units</td><td>Application interactions</td></tr>
+          <tr><td><strong>Speed</strong></td><td>Fast</td><td>Comparatively slower</td></tr>
+          <tr><td><strong>Needs UI?</strong></td><td>No</td><td>Yes — runs the app</td></tr>
+          <tr><td><strong>Pattern</strong></td><td>Arrange–Act–Assert</td><td>Given–When–Then</td></tr>
+          <tr><td><strong>Example</strong></td><td>calculateDiscount(20000)=1000</td><td>Enter 20000 → screen shows 1000</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sec">Knowledge Check</div>
+      <div class="quiz">
+        <div class="quiz-q">1. Testing vs debugging — which finds the problem?</div>
+        <button class="qopt" onclick="pick(this,true)">A. Testing finds it; debugging explains why</button>
+        <button class="qopt" onclick="pick(this,false)">B. Debugging finds it; testing fixes it</button>
+        <button class="qopt" onclick="pick(this,false)">C. They are the same</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">2. Which layer of the pyramid has the MOST tests?</div>
+        <button class="qopt" onclick="pick(this,true)">A. QUnit unit tests (the base)</button>
+        <button class="qopt" onclick="pick(this,false)">B. End-to-end (the top)</button>
+        <button class="qopt" onclick="pick(this,false)">C. Equal at every level</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">3. Which command runs the app on local fake data?</div>
+        <button class="qopt" onclick="pick(this,false)">A. npm start</button>
+        <button class="qopt" onclick="pick(this,true)">B. npm run start-mock</button>
+        <button class="qopt" onclick="pick(this,false)">C. npm build</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">4. An empty table with OData response <code>200 OK</code> + records means…</div>
+        <button class="qopt" onclick="pick(this,false)">A. The backend is broken</button>
+        <button class="qopt" onclick="pick(this,true)">B. The frontend binding path is likely wrong</button>
+        <button class="qopt" onclick="pick(this,false)">C. The user is unauthorized</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">5. To debug <em>inside</em> a function your code calls, you use…</div>
+        <button class="qopt" onclick="pick(this,false)">A. Step over</button>
+        <button class="qopt" onclick="pick(this,true)">B. Step into</button>
+        <button class="qopt" onclick="pick(this,false)">C. Resume</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">6. QUnit follows which pattern?</div>
+        <button class="qopt" onclick="pick(this,true)">A. Arrange – Act – Assert</button>
+        <button class="qopt" onclick="pick(this,false)">B. Given – When – Then</button>
+        <button class="qopt" onclick="pick(this,false)">C. Try – Catch – Finally</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">7. Why does OPA5 use <code>waitFor</code> instead of a fixed <code>setTimeout</code>?</div>
+        <button class="qopt" onclick="pick(this,true)">A. UI5 renders asynchronously; polling avoids flaky timing</button>
+        <button class="qopt" onclick="pick(this,false)">B. To make tests slower on purpose</button>
+        <button class="qopt" onclick="pick(this,false)">C. setTimeout is not valid JavaScript</button>
+        <div class="qfb"></div>
+      </div>
+      <div class="quiz">
+        <div class="quiz-q">8. An OData <code>403 Forbidden</code> usually means…</div>
+        <button class="qopt" onclick="pick(this,false)">A. The service URL is misspelled</button>
+        <button class="qopt" onclick="pick(this,true)">B. The user lacks authorization for the operation</button>
+        <button class="qopt" onclick="pick(this,false)">C. The response body is empty</button>
+        <div class="qfb"></div>
+      </div>
+
+      <div class="tip-box">
+        <div class="tb-icon">🎯</div>
+        <div class="tb-text"><strong>The final formula:</strong> QUnit tests + OPA5 tests + OData testing + Chrome debugging + manual business testing = a reliable SAP Fiori application. Test proactively, debug systematically (reproduce → console → network → breakpoint → root cause → smallest fix → retest → regression), keep logic separate and testable, use stable control IDs, and after every bug fix, add the test that would have caught it.</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+/* ── Navigation (12 units) ── */
+const TOTAL=12;
+const titles=['','Testing vs Debugging','The Testing Pyramid','SAP Fiori Tools','Mock Data vs Real Backend','Chrome DevTools Panels','Breakpoints & Debugging','Network & OData Status Codes','Binding & Event Debugging','QUnit Unit Testing','OPA5 Integration Testing','Errors & Systematic Debugging','Workflow & Knowledge Check'];
+let cur=1;
+function go(n,btn){
+  document.querySelectorAll('.unit').forEach(u=>u.classList.remove('active'));
+  document.querySelectorAll('.rail-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('u'+n).classList.add('active');
+  if(btn)btn.classList.add('active');
+  else document.querySelectorAll('.rail-item')[n-1].classList.add('active');
+  cur=n;
+  document.getElementById('ttl').textContent=titles[n];
+  document.getElementById('prog').style.width=Math.round(n/TOTAL*100)+'%';
+  document.querySelector('.content').scrollTop=0;
+}
+function nxt(){const n=cur<TOTAL?cur+1:1;go(n,document.querySelectorAll('.rail-item')[n-1]);}
+function rev(btn){const a=btn.nextElementSibling;a.classList.toggle('on');btn.textContent=a.classList.contains('on')?'Hide Answer':'Reveal Answer';}
+
+/* ── U2: pyramid ── */
+const pyrData={
+  unit:'<strong>🧩 QUnit — Unit tests (wide base).</strong> Check one small piece of code independently: a formatter, validator, price calculation, date conversion, or controller helper. Milliseconds each — write <em>many</em>. SAPUI5 supports QUnit for JavaScript logic including async.',
+  opa:'<strong>🎭 OPA5 — Integration tests (middle).</strong> Check whether multiple parts work together: view + controller, button + handler, router + page, model + table, search + filtering. It waits for UI5 controls and data, then acts and asserts. Write <em>some</em>.',
+  e2e:'<strong>🌐 End-to-End / Manual (narrow top).</strong> Verify a full business workflow: log in → open Sales Orders → create → add customer &amp; products → save → verify the order number. Highest confidence, slowest — keep <em>few</em>.'
+};
+function pyrPick(key,el){
+  document.querySelectorAll('.pyr-row').forEach(r=>r.style.outline='');
+  if(el)el.style.outline='2px solid rgba(0,0,0,.28)';
+  document.getElementById('pyr-detail').innerHTML=pyrData[key];
+}
+
+/* ── U5: DevTools panels (6) ── */
+const dtData={
+  elements:{body:'<strong>Elements</strong> — inspect the rendered HTML and applied CSS. Check classes, temporarily change styles, find hidden elements, understand layout, and read control size/position.',when:'Use when something <em>looks</em> wrong — a hidden button (<code>display:none</code>), misaligned layout, wrong colour.'},
+  console:{body:'<strong>Console</strong> — JavaScript errors, warnings, log output, failed module loads, binding errors, and a place to run JS live. e.g. <code>console.log("Selected order:", oOrder)</code>.',when:'Use when you want quick error messages or to try a line of code interactively.'},
+  sources:{body:'<strong>Sources</strong> — the JavaScript debugger. Open files, set <strong>breakpoints</strong>, pause execution, step line by line, inspect variables and the call stack.',when:'Use when logic is wrong and you need to watch values change step by step.'},
+  network:{body:'<strong>Network</strong> — every request: OData, metadata, JS, XML, CSS, images. See method, payload, response, status code and duration.',when:'Use when data is missing or wrong — is it the app or the OData service? Check the status code first.'},
+  application:{body:'<strong>Application</strong> — browser-side storage: local storage, session storage, cookies, cache, IndexedDB. Where apps keep tokens, theme, preferences, cached settings.',when:'Use when a stored value (token, preference, cached setting) seems stale or wrong.'},
+  performance:{body:'<strong>Performance</strong> — record and analyse runtime: what is slow, long tasks, rendering and scripting time.',when:'Use when the app is <em>slow</em> and you need to find the bottleneck.'}
+};
+function dtPick(key,el){
+  document.querySelectorAll('.dt-tab').forEach(t=>t.classList.remove('on'));
+  if(el)el.classList.add('on');
+  const d=dtData[key];
+  document.getElementById('dt-body').innerHTML=d.body+'<div class="dt-when">👉 '+d.when+'</div>';
+}
+
+/* ── U6: debugging animation (pause) ── */
+const dbSteps=['dbs0','dbs1','dbs2','dbs3','dbs4','dbs5','dbs6'];
+let dbTimer=null,dbIdx=0,dbPaused=false,dbRunning=false;
+function dbReset(){clearTimeout(dbTimer);dbSteps.forEach(id=>{const e=document.getElementById(id);e.classList.remove('lit','done');});}
+function dbStep(){
+  if(dbPaused)return;
+  if(dbIdx>0){const p=document.getElementById(dbSteps[dbIdx-1]);p.classList.remove('lit');p.classList.add('done');}
+  if(dbIdx<dbSteps.length){document.getElementById(dbSteps[dbIdx]).classList.add('lit');dbIdx++;dbTimer=setTimeout(dbStep,1150);}
+  else dbDone();
+}
+function dbDone(){dbRunning=false;dbPaused=false;const p=document.getElementById('db-play');p.style.display='';p.innerHTML='▶ Debug again';document.getElementById('db-pause').style.display='none';}
+function playDebug(){
+  if(dbRunning&&dbPaused){dbPaused=false;document.getElementById('db-play').style.display='none';document.getElementById('db-pause').style.display='';dbStep();return;}
+  dbReset();dbIdx=0;dbPaused=false;dbRunning=true;
+  document.getElementById('db-play').style.display='none';const pb=document.getElementById('db-pause');pb.style.display='';pb.innerHTML='⏸ Pause';dbStep();
+}
+function pauseDebug(){if(!dbRunning)return;dbPaused=true;clearTimeout(dbTimer);document.getElementById('db-pause').style.display='none';const p=document.getElementById('db-play');p.style.display='';p.innerHTML='▶ Resume';}
+
+/* ── U7: status code decoder ── */
+const stData={
+  '200':'<strong>200 OK</strong> — the request completed successfully and returned data. If the table is still empty, the problem is on the <em>frontend</em> (binding path / model).',
+  '201':'<strong>201 Created</strong> — a new entity was created successfully (a POST worked). You can confirm the record now exists in the response.',
+  '204':'<strong>204 No Content</strong> — an update or delete completed successfully with nothing to return. Normal for PUT/MERGE/DELETE.',
+  '400':'<strong>400 Bad Request</strong> — invalid data or a malformed query. Check the payload and the OData query options (<code>$filter</code>, <code>$expand</code>).',
+  '401':'<strong>401 Unauthorized</strong> — authentication is required or the session expired. The user needs to log in / re-authenticate.',
+  '403':'<strong>403 Forbidden</strong> — authenticated but not <em>authorized</em>: missing role or service authorization, or a CSRF-token issue on a modifying request.',
+  '404':'<strong>404 Not Found</strong> — wrong URL or service: incorrect service name, entity set, inactive service, or wrong destination path.',
+  '500':'<strong>500 Internal Server Error</strong> — a backend exception. The frontend did its job; investigate the server-side service, data, or logic.'
+};
+function stPick(code,el){
+  document.querySelectorAll('.status-chip').forEach(c=>c.style.outline='');
+  if(el)el.style.outline='2px solid rgba(0,0,0,.3)';
+  document.getElementById('st-detail').innerHTML=stData[code];
+}
+
+/* ── U12: QUnit vs OPA5 concept ── */
+const ccData={
+  qunit:{title:'🧩 QUnit',
+    def:'Tests <strong>individual JavaScript units</strong> with direct function calls — fast, no UI workflow needed. Ideal for formatters and calculations. Follows <strong>Arrange–Act–Assert</strong>.',
+    analogy:'🔧 <b>Checking one brake sensor:</b> test a single component in isolation and know instantly if that one part is faulty.'},
+  opa:{title:'🎭 OPA5',
+    def:'Tests <strong>application interactions</strong> — finds controls and simulates the user pressing, typing and navigating, then asserts what appears. Slower, runs the real UI. Follows <strong>Given–When–Then</strong>.',
+    analogy:'🚗 <b>Driving the car through a test route:</b> confirm the assembled system behaves correctly from the driver\'s seat.'},
+  both:{title:'🤝 Using Them Together',
+    def:'They\'re complementary. <strong>Many QUnit</strong> tests cover logic fast; <strong>fewer OPA5</strong> tests cover key journeys. QUnit asks "does <code>calculateDiscount(20000)</code> return 1000?"; OPA5 asks "when the user enters 20000, does the screen show 1000?"',
+    analogy:'🏭 <b>Sensor check + test drive:</b> together they prove both the parts and the whole vehicle work.'}
+};
+function ccPick(key,el){
+  document.querySelectorAll('.cc-tab').forEach(t=>t.classList.remove('on'));
+  if(el)el.classList.add('on');
+  const d=ccData[key];
+  document.getElementById('cc-title').innerHTML=d.title;
+  document.getElementById('cc-def').innerHTML=d.def;
+  document.getElementById('cc-analogy').innerHTML=d.analogy;
+}
+
+/* ── U11: pitfall decoder ── */
+function errToggle(card){
+  const fix=card.querySelector('.err-fix');
+  const hint=card.querySelector('.err-hint');
+  const open=fix.classList.toggle('on');
+  hint.style.display=open?'none':'block';
+}
+
+/* ── U12: knowledge check ── */
+function pick(btn,correct){
+  const quiz=btn.closest('.quiz');
+  if(quiz.dataset.done==='1')return;
+  quiz.dataset.done='1';
+  const fb=quiz.querySelector('.qfb');
+  if(correct){
+    btn.classList.add('correct');
+    fb.innerHTML='<span style="color:#107e3e;font-weight:700;">✓ Correct!</span>';
+  } else {
+    btn.classList.add('wrong');
+    quiz.querySelectorAll('.qopt').forEach(o=>{if(o.getAttribute('onclick').includes('true'))o.classList.add('correct');});
+    fb.innerHTML='<span style="color:#bb0000;font-weight:700;">✗ Not quite</span> — the highlighted option is correct.';
+  }
+  fb.classList.add('on');
+}
+
+/* ── Init defaults ── */
+pyrPick('unit',document.querySelector('.pyr-row.unit'));
+dtPick('elements',document.getElementById('dt-elements'));
+stPick('200',document.querySelector('.status-chip.s2'));
+ccPick('qunit',document.getElementById('cc-qunit'));
+</script>
+</body>
+</html>
